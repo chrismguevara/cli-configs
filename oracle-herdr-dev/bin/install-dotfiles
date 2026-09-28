@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Install the configuration files from dotfiles/ into $HOME.
+#
+#   dotfiles/bashrc        -> ~/.config/dev-shell/bashrc  (+ one source line in ~/.bashrc)
+#   dotfiles/herdr/        -> ~/.config/herdr/
+#   dotfiles/nvim/         -> ~/.config/nvim/
+#   bin/                   -> ~/.local/bin/ (symlinks: ws-run, setup-workspaces, ...)
+#
+# Files are symlinked so editing the repository edits the live config.
+# Re-running is safe. Pre-existing non-symlink files are backed up once as
+# <name>.pre-dev-shell.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+log() { printf '\033[1;34m==> %s\033[0m\n' "$*"; }
+ok()  { printf '\033[1;32m    ok: %s\033[0m\n' "$*"; }
+
+link() { # link SRC DEST
+  local src="$1" dest="$2"
+  mkdir -p "$(dirname "${dest}")"
+  if [[ -L "${dest}" && "$(readlink -f "${dest}")" == "$(readlink -f "${src}")" ]]; then
+    ok "${dest} -> ${src}"
+    return
+  fi
+  if [[ -e "${dest}" && ! -L "${dest}" ]]; then
+    mv "${dest}" "${dest}.pre-dev-shell"
+    echo "    backed up existing ${dest} -> ${dest}.pre-dev-shell"
+  fi
+  ln -sfn "${src}" "${dest}"
+  ok "${dest} -> ${src}"
+}
+
+log "shell fragment"
+link "${REPO_ROOT}/dotfiles/bashrc" "${HOME}/.config/dev-shell/bashrc"
+MARK="# dev-shell (oracle-herdr-dev): source the shared shell fragment"
+if ! grep -qF "${MARK}" "${HOME}/.bashrc" 2>/dev/null; then
+  printf '\n%s\n[ -f "$HOME/.config/dev-shell/bashrc" ] && . "$HOME/.config/dev-shell/bashrc"\n' "${MARK}" >> "${HOME}/.bashrc"
+  ok "added source line to ~/.bashrc"
+else
+  ok "~/.bashrc already sources the fragment"
+fi
+
+log "herdr"
+link "${REPO_ROOT}/dotfiles/herdr/config.toml" "${HOME}/.config/herdr/config.toml"
+
+log "neovim"
+link "${REPO_ROOT}/dotfiles/nvim" "${HOME}/.config/nvim"
+
+log "bin"
+mkdir -p "${HOME}/.local/bin"
+for f in "${REPO_ROOT}"/bin/*; do
+  [[ -x "${f}" ]] || continue
+  link "${f}" "${HOME}/.local/bin/$(basename "${f}")"
+done

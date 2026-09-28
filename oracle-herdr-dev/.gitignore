@@ -1,0 +1,7 @@
+# generated per machine
+dotfiles/nvim/nvim-pack-lock.json
+*.pre-dev-shell
+# terraform (see infra/terraform/.gitignore too)
+infra/terraform/.terraform/
+infra/terraform/*.tfstate*
+infra/terraform/terraform.tfvars

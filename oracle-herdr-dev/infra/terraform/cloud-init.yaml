@@ -1,0 +1,25 @@
+#cloud-config
+# First boot of the Oracle Linux 9 dev VM. Keeps the host to what the repo's
+# install scripts expect: SSH key auth only, firewalld default (SSH only),
+# git present so the repository can be cloned. Everything else is installed
+# by install/*.sh from the cloned repository (versions pinned in versions.env).
+package_update: true
+packages:
+  - git
+  - curl
+  - tar
+write_files:
+  - path: /etc/ssh/sshd_config.d/50-key-only.conf
+    permissions: "0600"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      ChallengeResponseAuthentication no
+      PermitRootLogin no
+      PubkeyAuthentication yes
+      AllowTcpForwarding yes
+runcmd:
+  - systemctl restart sshd
+  # Oracle Linux images ship firewalld with only ssh open; make sure it stays that way.
+  - firewall-cmd --permanent --zone=public --set-target=default
+  - firewall-cmd --reload

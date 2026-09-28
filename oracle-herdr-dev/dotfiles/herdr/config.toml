@@ -1,0 +1,69 @@
+# Herdr configuration -- installed to ~/.config/herdr/config.toml by bin/install-dotfiles.
+# Reference: `herdr --default-config` (every key below exists there) and
+# https://herdr.dev/docs/configuration. Validate with `herdr config check`,
+# reload a running server with `herdr server reload-config` (prefix+shift+r).
+
+# No first-run notification wizard on a headless dev VM.
+onboarding = false
+
+[keys]
+# Everything is behind the prefix so plain Ctrl-h/j/k/l stay with Neovim.
+prefix = "ctrl+b"
+
+workspace_picker = "prefix+w"     # Ctrl-b w  -> choose worktree
+switch_tab = "prefix+1..9"        # Ctrl-b 1..6 -> nvim/opencode/git/dev/shell/scratch
+focus_pane_left = "prefix+h"      # Ctrl-b h/j/k/l -> move between panes
+focus_pane_down = "prefix+j"
+focus_pane_up = "prefix+k"
+focus_pane_right = "prefix+l"
+zoom = "prefix+z"                 # Ctrl-b z  -> zoom / unzoom pane
+detach = "prefix+q"               # Ctrl-b q  -> detach (server keeps running)
+
+# Herdr defaults, listed so the full working set is visible in one place.
+help = "prefix+?"
+new_tab = "prefix+c"
+rename_tab = "prefix+shift+t"
+previous_tab = "prefix+p"
+next_tab = "prefix+n"
+close_tab = "prefix+shift+x"
+split_vertical = "prefix+v"
+split_horizontal = "prefix+minus"
+close_pane = "prefix+x"
+resize_mode = "prefix+r"
+copy_mode = "prefix+["
+toggle_sidebar = "prefix+b"
+new_workspace = "prefix+shift+n"
+rename_workspace = "prefix+shift+w"
+close_workspace = "prefix+shift+d"
+reload_config = "prefix+shift+r"
+
+[terminal]
+# Explicit bash (not $SHELL, which a headless `herdr server` may lack) so every
+# pane reads ~/.bashrc. New panes/tabs inherit the workspace cwd,
+# so a tab opened by hand lands in the worktree and dotfiles/bashrc loads its
+# .workspace.env.
+default_shell = "/bin/bash"
+new_cwd = "follow"
+
+[session]
+# After `herdr server` restarts (e.g. a VM reboot), restore agents natively:
+# OpenCode panes come back with `opencode --session <id>` when the official
+# integration reported a session id.
+resume_agents_on_restore = true
+
+[update]
+# Upgrades are deliberate (versions.env + install/herdr.sh); no update nags.
+channel = "stable"
+version_check = false
+manifest_check = false
+
+[ui]
+# Tabs/workspaces are created by bin/setup-workspaces with explicit labels;
+# do not prompt for names when creating by hand either.
+prompt_new_tab_name = false
+prompt_new_workspace_name = false
+confirm_close = true
+window_title = "{hostname}: {workspace}"
+
+[theme]
+name = "catppuccin"

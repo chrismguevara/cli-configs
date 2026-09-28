@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars (git-ignored) and fill in. No secrets belong here:
+# the API private key stays in ~/.oci (referenced by path) and the SSH key is public.
+region           = "us-phoenix-1"
+compartment_ocid = "ocid1.tenancy.oc1..aaaa..."   # root compartment (tenancy OCID) is fine
+ssh_public_key   = "ssh-ed25519 AAAA... you@windows"
+# ssh_source_cidr = "203.0.113.7/32"
+
+# Free-tier shape. Default is the ARM A1.Flex at the Always Free ceiling
+# (2 OCPU / 12 GB). For the x86_64 micro shape use:
+# shape           = "VM.Standard.E2.1.Micro"
+# shape_ocpus     = 1
+# shape_memory_gb = 1

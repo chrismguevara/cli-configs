@@ -1,0 +1,72 @@
+# ~/.config/dev-shell/bashrc -- sourced from ~/.bashrc by bin/install-dotfiles.
+# Keep this small and readable; it runs in every interactive shell and Herdr pane.
+
+# ---- PATH ------------------------------------------------------------------
+# Prepend only if missing so re-sourcing does not grow PATH.
+_devshell_path_prepend() {
+  case ":${PATH}:" in
+    *":$1:"*) ;;
+    *) PATH="$1:${PATH}" ;;
+  esac
+}
+_devshell_path_prepend "${HOME}/.cargo/bin"     # rust toolchain (tree-sitter CLI build)
+_devshell_path_prepend "${HOME}/.opencode/bin"   # opencode (official install location)
+_devshell_path_prepend "${HOME}/go/bin"
+_devshell_path_prepend /usr/local/go/bin
+_devshell_path_prepend "${HOME}/.local/bin"      # herdr, tree-sitter
+export PATH
+
+# ---- Node via nvm (installed by install/node.sh) ---------------------------
+export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+# shellcheck disable=SC1091
+[ -s "${NVM_DIR}/nvm.sh" ] && . "${NVM_DIR}/nvm.sh"
+# shellcheck disable=SC1091
+[ -s "${NVM_DIR}/bash_completion" ] && . "${NVM_DIR}/bash_completion"
+
+# ---- Go --------------------------------------------------------------------
+export GOTOOLCHAIN=local   # use exactly the Go pinned in versions.env
+
+# ---- locale ----------------------------------------------------------------
+# Neovim, Herdr and OpenCode draw with Unicode; a session without a UTF-8
+# locale (some SSH clients do not forward LANG) gets C.UTF-8.
+case "${LANG:-}" in
+  *UTF-8*|*utf8*) ;;
+  *) export LANG=C.UTF-8 ;;
+esac
+
+# ---- editor ----------------------------------------------------------------
+export EDITOR=nvim
+export VISUAL=nvim
+
+# ---- opencode --------------------------------------------------------------
+# Upgrades are deliberate (versions.env + install/opencode.sh).
+export OPENCODE_DISABLE_AUTOUPDATE=1
+
+# ---- aliases ---------------------------------------------------------------
+alias v='nvim'
+alias lg='lazygit'
+alias hr='herdr'
+alias ws='cat "${WORKTREE_DIR:-.}/.workspace.env" 2>/dev/null'
+
+# ---- workspace context ----------------------------------------------------
+# Panes started by bin/setup-workspaces go through bin/ws-run, which exports
+# <worktree>/.workspace.env. Tabs/panes opened by hand inside Herdr start in
+# the workspace directory (terminal.new_cwd = "follow"), so also load the env
+# file when a shell starts inside ~/worktrees/<n>. Only that tree is trusted.
+case "${PWD}/" in
+  "${HOME}/worktrees/"*)
+    _ws_rel="${PWD#"${HOME}"/worktrees/}"          # e.g. 3/frontend/src
+    _ws_root="${HOME}/worktrees/${_ws_rel%%/*}"     # e.g. ~/worktrees/3
+    if [ -z "${WORKSPACE_NAME:-}" ] && [ -f "${_ws_root}/.workspace.env" ]; then
+      set -a; . "${_ws_root}/.workspace.env"; set +a
+    fi
+    unset _ws_rel _ws_root
+    ;;
+esac
+if [ -n "${WORKSPACE_NAME:-}" ]; then
+  PS1="[\[\e[1;35m\]${WORKSPACE_NAME}\[\e[0m\]] \u@\h:\w\$ "
+fi
+
+# fzf key bindings / completion if the EPEL package provides them.
+# shellcheck disable=SC1091
+[ -f /usr/share/fzf/shell/key-bindings.bash ] && . /usr/share/fzf/shell/key-bindings.bash

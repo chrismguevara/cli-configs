@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+# Verify the whole development environment. Prints OK/FAIL per check and exits
+# non-zero if anything failed. Safe to run repeatedly.
+set -uo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+# shellcheck disable=SC1091
+source "${REPO_ROOT}/versions.env"
+# shellcheck disable=SC1091
+[[ -f "${HOME}/.config/dev-shell/bashrc" ]] && . "${HOME}/.config/dev-shell/bashrc"
+export PATH="${HOME}/.local/bin:${HOME}/.opencode/bin:${HOME}/go/bin:/usr/local/go/bin:${PATH}"
+
+WT="${WORKTREES_DIR:-$HOME/worktrees}/1"
+PASS=0; FAIL=0
+ok()   { PASS=$((PASS+1)); printf '\033[32mOK:  \033[0m %s\n' "$*"; }
+fail() { FAIL=$((FAIL+1)); printf '\033[31mFAIL:\033[0m %s\n' "$*"; }
+section() { printf '\n\033[1;34m== %s ==\033[0m\n' "$*"; }
+
+# check_version LABEL EXPECTED CMD...  (EXPECTED may be empty: only require it to run)
+check_version() {
+  local label="$1" expected="$2"; shift 2
+  local out
+  if ! out="$("$@" 2>&1 | head -n1)"; then fail "${label}: '$*' failed: ${out}"; return; fi
+  if [[ -n "${expected}" && "${out}" != *"${expected}"* ]]; then
+    fail "${label}: got '${out}', expected '${expected}' (versions.env)"
+  else
+    ok "${label}: ${out}"
+  fi
+}
+
+section "tool versions (pins from versions.env)"
+check_version git ""                                  git --version
+check_version curl ""                                 curl --version
+check_version wget ""                                 wget --version
+check_version jq ""                                   jq --version
+check_version unzip ""                                unzip -v
+check_version tar ""                                  tar --version
+check_version gzip ""                                 gzip --version
+check_version gcc ""                                  gcc --version
+check_version make ""                                 make --version
+check_version cmake ""                                cmake --version
+check_version ripgrep ""                              rg --version
+check_version fd ""                                   fd --version
+check_version fzf ""                                  fzf --version
+check_version neovim "NVIM ${NEOVIM_VERSION}"         nvim --version
+check_version tree-sitter "${TREE_SITTER_VERSION#v}"  tree-sitter --version
+check_version lazygit "version="                      sh -c 'lazygit --version | tr "," "\n" | grep version'
+check_version herdr "herdr ${HERDR_VERSION#v}"        herdr --version
+check_version opencode "${OPENCODE_VERSION#v}"        opencode --version
+check_version node "v${NODE_VERSION}"                 node --version
+check_version npm ""                                  npm --version
+check_version pnpm "${PNPM_VERSION}"                  pnpm --version
+check_version "typescript (global)" "${TYPESCRIPT_VERSION}" tsc --version
+check_version vtsls ""                                sh -c 'npm ls -g @vtsls/language-server --depth=0 | grep -o "@vtsls/language-server@[0-9.]*"'
+check_version vscode-eslint-language-server ""        sh -c 'command -v vscode-eslint-language-server'
+check_version go "go${GO_VERSION}"                    go version
+check_version gopls ""                                gopls version
+check_version goimports ""                            sh -c 'goimports -h 2>&1 | head -n1'
+check_version staticcheck ""                          staticcheck -version
+
+section "neovim (headless)"
+if nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1; then
+  ok "lazy.nvim restore (plugins installed at lazy-lock.json versions)"
+else
+  fail "lazy.nvim restore failed (run: nvim --headless '+Lazy! restore' +qa)"
+fi
+health="$(mktemp)"
+nvim --headless "+checkhealth" "+silent! write! ${health}" +qa >/dev/null 2>&1
+# Only errors from components this environment relies on are fatal.
+relevant='nvim-treesitter|vim.lsp|conform|telescope|blink|lazy|vim.treesitter|nvim\b'
+errors="$(grep -E '^- (ERROR|✗)' "${health}" | grep -Ei "${relevant}" || true)"
+if [[ -z "${errors}" ]]; then
+  ok "checkhealth: no relevant ERROR lines ($(grep -c '^- ERROR' "${health}" || true) unrelated, e.g. optional providers)"
+else
+  fail "checkhealth errors:"; printf '%s\n' "${errors}"
+fi
+grep -E '^- (ERROR|WARNING)' "${health}" | grep -Ei 'treesitter|lsp|conform|telescope|blink' | sed 's/^/      /'
+rm -f "${health}"
+
+if [[ -d "${WT}/frontend/node_modules" ]]; then
+  if VERIFY_WORKTREE="${WT}" nvim --headless "+luafile ${REPO_ROOT}/bin/lib/verify-nvim.lua" 2>&1 | sed 's/^/      /' | tee /dev/stderr | grep -q '0 failure(s)'; then
+    ok "LSP attach, go-to-definition, references and formatting (see lines above)"
+  else
+    fail "nvim LSP/format checks (see lines above)"
+  fi
+else
+  fail "${WT}/frontend/node_modules missing: run 'pnpm install' in ${WT}/frontend first"
+fi
+
+section "herdr"
+if [[ "$(herdr session list --json 2>/dev/null | jq -r '.sessions[] | select(.default) | .running')" == "true" ]]; then
+  ok "herdr server running ($(herdr status server | grep -E '^version' | tr -d ' '))"
+  started_here=0
+else
+  nohup herdr server >/dev/null 2>&1 &
+  sleep 2
+  started_here=1
+fi
+probe="$(herdr workspace create --cwd "${HOME}" --label verify-probe --no-focus 2>&1)"
+pid="$(printf '%s' "${probe}" | jq -r '.result.workspace.workspace_id' 2>/dev/null)"
+if [[ -n "${pid}" && "${pid}" != "null" ]] && herdr workspace list | jq -e --arg id "${pid}" '.result.workspaces[] | select(.workspace_id == $id)' >/dev/null; then
+  ok "herdr can create and list workspaces (${pid})"
+  herdr workspace close "${pid}" >/dev/null 2>&1
+else
+  fail "herdr workspace create/list: ${probe}"
+fi
+n_ws="$(herdr workspace list | jq -r '[.result.workspaces[] | select(.label | test("^ws[1-5]$"))] | length')"
+if [[ "${n_ws}" == "5" ]]; then ok "five ws1..ws5 workspaces present"; else fail "expected 5 ws<n> workspaces, found ${n_ws} (run bin/setup-workspaces)"; fi
+[[ "${started_here}" == "1" ]] && herdr server stop >/dev/null 2>&1
+
+section "opencode + herdr integration"
+if herdr integration status 2>/dev/null | grep -qE '^opencode: current'; then
+  ok "herdr opencode integration: $(herdr integration status | grep '^opencode')"
+else
+  fail "herdr opencode integration not current (run install/opencode.sh)"
+fi
+
+section "fixture worktrees"
+for n in 1 2 3 4 5; do
+  d="${WORKTREES_DIR:-$HOME/worktrees}/${n}"
+  if [[ -f "${d}/.workspace.env" ]] && git -C "${d}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    ok "worktree ${n}: $(git -C "${d}" branch --show-current) FRONTEND_PORT=$(grep FRONTEND_PORT "${d}/.workspace.env" | cut -d= -f2)"
+  else
+    fail "worktree ${n} missing or without .workspace.env"
+  fi
+done
+if (cd "${WT}/backend" && go build ./... && go vet ./... >/dev/null 2>&1); then ok "go build + vet (fixture backend)"; else fail "go build/vet failed in ${WT}/backend"; fi
+if [[ -x "${WT}/frontend/node_modules/.bin/oxfmt" ]]; then
+  if (cd "${WT}/frontend" && ./node_modules/.bin/oxfmt --check >/dev/null 2>&1); then ok "oxfmt --check (fixture frontend)"; else fail "oxfmt --check reports unformatted files in ${WT}/frontend"; fi
+  if (cd "${WT}/frontend" && ./node_modules/.bin/tsc -b --noEmit >/dev/null 2>&1); then ok "tsc -b (fixture frontend)"; else fail "tsc failed in ${WT}/frontend"; fi
+else
+  fail "project-local oxfmt missing (${WT}/frontend/node_modules/.bin/oxfmt): pnpm install"
+fi
+
+printf '\n%d ok, %d failed\n' "${PASS}" "${FAIL}"
+[[ "${FAIL}" -eq 0 ]]

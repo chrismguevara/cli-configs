@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# ws-run <worktree-dir> <command...>
+#
+# Load <worktree-dir>/.workspace.env (ports, workspace name), cd there and
+# exec the command. Herdr does NOT propagate --env from a workspace to sibling
+# tabs/panes, so every pane started by bin/setup-workspaces goes through this
+# wrapper instead of relying on inherited environment.
+set -euo pipefail
+
+if [[ $# -lt 2 ]]; then
+  echo "usage: ws-run <worktree-dir> <command> [args...]" >&2
+  exit 2
+fi
+
+dir="$1"; shift
+env_file="${dir}/.workspace.env"
+[[ -d "${dir}" ]] || { echo "ws-run: no such directory: ${dir}" >&2; exit 1; }
+[[ -f "${env_file}" ]] || { echo "ws-run: missing ${env_file} (run bin/setup-worktrees)" >&2; exit 1; }
+
+cd "${dir}"
+set -a
+# shellcheck disable=SC1090
+. "${env_file}"
+set +a
+exec "$@"

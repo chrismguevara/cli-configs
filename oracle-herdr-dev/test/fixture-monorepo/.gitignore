@@ -1,0 +1,15 @@
+# generated per worktree by bin/setup-worktrees (ports only, but differs per worktree)
+.workspace.env
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# backend
+backend/bin/
+backend/server
+
+# editors
+.DS_Store
+*.swp

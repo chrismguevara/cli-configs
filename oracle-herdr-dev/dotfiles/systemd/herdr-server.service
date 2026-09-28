@@ -1,0 +1,26 @@
+# Optional: start the Herdr server at boot (user service) so the saved layout is
+# restored before you SSH in. Not enabled by bin/install-dotfiles; see
+# docs/installation.md "Start Herdr at boot". Requires lingering for opc:
+#   sudo loginctl enable-linger opc
+#   mkdir -p ~/.config/systemd/user && cp dotfiles/systemd/herdr-server.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now herdr-server
+#
+# Untested in this repository's container-based validation (no systemd there).
+[Unit]
+Description=Herdr terminal workspace server
+After=network-online.target
+
+[Service]
+Type=simple
+# Panes read ~/.bashrc via bash; keep the same PATH the login shell would build.
+Environment=SHELL=/bin/bash
+Environment=LANG=C.UTF-8
+ExecStart=%h/.local/bin/herdr server
+ExecStop=%h/.local/bin/herdr server stop
+Restart=on-failure
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=default.target

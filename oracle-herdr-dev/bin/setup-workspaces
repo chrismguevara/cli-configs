@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+# Bootstrap five Herdr workspaces, one per Git worktree. Idempotent: every
+# object is looked up by label in Herdr's JSON output before it is created.
+#
+#   workspace ws<n>  (cwd ~/worktrees/<n>)
+#     tab 1 nvim      nvim .
+#     tab 2 opencode  opencode            (registered as Herdr agent "ws<n>")
+#     tab 3 git       lazygit
+#     tab 4 dev       4 panes: frontend | backend / keycloak | database
+#     tab 5 shell
+#     tab 6 scratch
+#
+# Every command runs through bin/ws-run so each pane gets the worktree's
+# .workspace.env (Herdr --env is per launch and not inherited by sibling
+# tabs/panes, so it is passed explicitly on every create/split as well).
+#
+# Requires: herdr (install/herdr.sh), jq, bin/setup-worktrees already run.
+set -euo pipefail
+
+WT_ROOT="${WORKTREES_DIR:-$HOME/worktrees}"
+COUNT=5
+WS_RUN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ws-run"
+export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
+
+# Messages go to stderr: helper functions return IDs on stdout.
+log() { printf '\033[1;34m==> %s\033[0m\n' "$*" >&2; }
+ok()  { printf '\033[1;32m    ok: %s\033[0m\n' "$*" >&2; }
+die() { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
+
+command -v herdr >/dev/null || die "herdr not found (run install/herdr.sh)"
+command -v jq >/dev/null || die "jq not found (run install/base.sh)"
+[[ -x "${WS_RUN}" ]] || die "missing ${WS_RUN}"
+
+# --- 1. worktrees -------------------------------------------------------------
+for n in $(seq 1 "${COUNT}"); do
+  [[ -f "${WT_ROOT}/${n}/.workspace.env" ]] || die "missing ${WT_ROOT}/${n}/.workspace.env (run bin/setup-worktrees)"
+done
+ok "worktrees 1-${COUNT} present under ${WT_ROOT}"
+
+# --- 2. server ----------------------------------------------------------------
+# `herdr session list --json` reports whether the default session's server runs.
+if [[ "$(herdr session list --json | jq -r '.sessions[] | select(.default) | .running')" != "true" ]]; then
+  log "starting headless herdr server"
+  nohup herdr server >"$HOME/.config/herdr/server-bootstrap.log" 2>&1 &
+  for _ in $(seq 1 50); do
+    sleep 0.2
+    [[ "$(herdr session list --json 2>/dev/null | jq -r '.sessions[] | select(.default) | .running')" == "true" ]] && break
+  done
+fi
+herdr status server | grep -q "status: running" || die "herdr server is not running"
+ok "herdr server running ($(herdr --version))"
+
+# --- helpers ------------------------------------------------------------------
+# env flags for a worktree: --env K=V for every assignment in .workspace.env
+env_flags() {
+  local dir="$1" line
+  while IFS= read -r line; do
+    [[ "${line}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
+    printf -- '--env\n%s\n' "${line}"
+  done < "${dir}/.workspace.env"
+}
+
+workspace_id_by_label() { herdr workspace list | jq -r --arg l "$1" '.result.workspaces[] | select(.label == $l) | .workspace_id' | head -n1; }
+tab_id_by_label()       { herdr tab list --workspace "$1" | jq -r --arg l "$2" '.result.tabs[] | select(.label == $l) | .tab_id' | head -n1; }
+tab_root_pane()         { herdr pane list --workspace "$1" | jq -r --arg t "$2" '[.result.panes[] | select(.tab_id == $t)] | sort_by(.pane_id) | .[0].pane_id'; }
+pane_count_in_tab()     { herdr pane list --workspace "$1" | jq -r --arg t "$2" '[.result.panes[] | select(.tab_id == $t)] | length'; }
+# wait_for_shell PANE_ID -- a freshly created pane needs a moment before its shell exists
+wait_for_shell() {
+  local i
+  for i in $(seq 1 30); do
+    if herdr pane process-info --pane "$1" 2>/dev/null | jq -e '.result.process_info.shell_pid > 0' >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  return 1
+}
+pane_has_process()      { # true when the pane's foreground process is something other than its shell
+  herdr pane process-info --pane "$1" 2>/dev/null \
+    | jq -e '.result.process_info as $p | [$p.foreground_processes[]? | select(.pid != $p.shell_pid) | .name] | any(. != "bash" and . != "sh" and . != "zsh")' >/dev/null 2>&1
+}
+
+# ensure_tab WORKSPACE_ID LABEL DIR [CWD] -> prints tab id (creates if missing)
+ensure_tab() {
+  local ws="$1" label="$2" dir="$3" cwd="${4:-$3}" tid
+  tid="$(tab_id_by_label "${ws}" "${label}")"
+  if [[ -z "${tid}" ]]; then
+    mapfile -t ENVF < <(env_flags "${dir}")
+    created="$(herdr tab create --workspace "${ws}" --cwd "${cwd}" --label "${label}" "${ENVF[@]}" --no-focus)"
+    tid="$(printf '%s' "${created}" | jq -r '.result.tab.tab_id')"
+    wait_for_shell "$(printf '%s' "${created}" | jq -r '.result.root_pane.pane_id')" || true
+    ok "  tab ${label} -> ${tid}"
+  fi
+  printf '%s' "${tid}"
+}
+
+# run_in_pane PANE_ID DIR COMMAND...   (only if the pane still runs a bare shell)
+run_in_pane() {
+  local pane="$1" dir="$2"; shift 2
+  if pane_has_process "${pane}"; then
+    ok "  ${pane} already running a process, leaving it"
+    return
+  fi
+  # No exec: when the program exits the pane drops back to its shell.
+  herdr pane run "${pane}" "${WS_RUN} ${dir} $*" >/dev/null
+  ok "  ${pane}: $*"
+}
+
+# --- 3. workspaces --------------------------------------------------------------
+for n in $(seq 1 "${COUNT}"); do
+  dir="${WT_ROOT}/${n}"
+  label="ws${n}"
+  mapfile -t ENVF < <(env_flags "${dir}")
+
+  ws="$(workspace_id_by_label "${label}")"
+  if [[ -z "${ws}" ]]; then
+    log "workspace ${label} (${dir})"
+    created="$(herdr workspace create --cwd "${dir}" --label "${label}" "${ENVF[@]}" --no-focus)"
+    ws="$(printf '%s' "${created}" | jq -r '.result.workspace.workspace_id')"
+    first_tab="$(printf '%s' "${created}" | jq -r '.result.tab.tab_id')"
+    herdr tab rename "${first_tab}" nvim >/dev/null   # the tab that came with the workspace
+    wait_for_shell "$(printf '%s' "${created}" | jq -r '.result.root_pane.pane_id')" || true
+    ok "  created ${ws}"
+  else
+    log "workspace ${label} exists (${ws})"
+  fi
+
+  # tab 1: nvim
+  t_nvim="$(ensure_tab "${ws}" nvim "${dir}")"
+  run_in_pane "$(tab_root_pane "${ws}" "${t_nvim}")" "${dir}" nvim .
+
+  # tab 2: opencode (as a named Herdr agent so state/session are tracked)
+  t_oc="$(ensure_tab "${ws}" opencode "${dir}")"
+  p_oc="$(tab_root_pane "${ws}" "${t_oc}")"
+  if pane_has_process "${p_oc}"; then
+    ok "  ${p_oc} already running a process, leaving it"
+  elif herdr agent get "${label}" >/dev/null 2>&1; then
+    ok "  agent ${label} already registered"
+  else
+    # `agent start` launches `opencode` in that shell pane (which already has the
+    # worktree env from --env / dotfiles/bashrc) and registers it as agent ws<n>.
+    # If the TUI is slower than the timeout (first run), fall back to a plain run;
+    # Herdr still detects OpenCode from the screen / integration plugin.
+    if ! herdr agent start "${label}" --kind opencode --pane "${p_oc}" --timeout 30000 >/dev/null 2>&1; then
+      herdr pane run "${p_oc}" "${WS_RUN} ${dir} opencode" >/dev/null
+    fi
+    ok "  ${p_oc}: opencode (agent ${label})"
+  fi
+
+  # tab 3: git
+  t_git="$(ensure_tab "${ws}" git "${dir}")"
+  run_in_pane "$(tab_root_pane "${ws}" "${t_git}")" "${dir}" lazygit
+
+  # tab 4: dev -- frontend | backend / keycloak | database
+  t_dev="$(ensure_tab "${ws}" dev "${dir}" "${dir}/frontend")"   # root pane = frontend
+  if [[ "$(pane_count_in_tab "${ws}" "${t_dev}")" -lt 4 ]]; then
+    p_fe="$(tab_root_pane "${ws}" "${t_dev}")"
+    p_be="$(herdr pane split "${p_fe}" --direction right --ratio 0.5 --cwd "${dir}/backend" "${ENVF[@]}" --no-focus | jq -r '.result.pane.pane_id')"
+    p_kc="$(herdr pane split "${p_fe}" --direction down --ratio 0.5 --cwd "${dir}" "${ENVF[@]}" --no-focus | jq -r '.result.pane.pane_id')"
+    p_db="$(herdr pane split "${p_be}" --direction down --ratio 0.5 --cwd "${dir}" "${ENVF[@]}" --no-focus | jq -r '.result.pane.pane_id')"
+    for p in "${p_be}" "${p_kc}" "${p_db}"; do wait_for_shell "${p}" || true; done
+    herdr pane rename "${p_fe}" frontend >/dev/null
+    herdr pane rename "${p_be}" backend >/dev/null
+    herdr pane rename "${p_kc}" keycloak >/dev/null
+    herdr pane rename "${p_db}" database >/dev/null
+    ok "  dev panes: ${p_fe} frontend | ${p_be} backend / ${p_kc} keycloak | ${p_db} database"
+  else
+    ok "  dev tab already has $(pane_count_in_tab "${ws}" "${t_dev}") panes"
+  fi
+
+  # tabs 5-6: shell, scratch
+  ensure_tab "${ws}" shell "${dir}" >/dev/null
+  ensure_tab "${ws}" scratch "${dir}" >/dev/null
+done
+
+log "summary"
+herdr workspace list | jq -r '.result.workspaces[] | "\(.workspace_id)\t\(.label)\ttabs=\(.tab_count)\tpanes=\(.pane_count)"'
