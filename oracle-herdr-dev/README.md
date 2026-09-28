@@ -127,6 +127,45 @@ Node v24.21.0 (npm 11.19.0, pnpm 12.6.0, TypeScript 6.0.3, vtsls 0.3.0,
 vscode-langservers-extracted 4.10.0), oxfmt 0.70.0, git 2.52.0, ripgrep 15.2.0,
 fd 10.4.2, fzf 0.58.0.
 
+## Validation status (2026-09-28)
+
+No Oracle Cloud credentials or CLI were available where this repository was
+built, so the VM itself was **not** provisioned; `infra/terraform` passed
+`terraform fmt -check` and `terraform validate` against provider `oracle/oci`
+9.3.0, and the OCI CLI script is untested. Everything else was executed in a
+fresh `oraclelinux:9` (9.8, x86_64) container with an `opc` user, sudo and
+sshd, following the README procedure exactly:
+
+- `install/all.sh` → `verify-environment`: 43 checks passed, 0 failed
+  (versions, pins, headless Neovim: lazy.nvim restore, treesitter parsers,
+  vtsls + eslint attach on `App.tsx`, go-to-definition and references,
+  project-local oxfmt formatting, gopls attach on `main.go`, definition and
+  references, goimports/gofmt formatting, telescope-fzf-native, blink.cmp
+  prebuilt matcher, Herdr create/list workspaces, five `ws<n>` workspaces,
+  OpenCode integration current, fixture `tsc`/`oxfmt --check`/`go vet`).
+- `setup-workspaces` created ws1…ws5 (6 tabs, 9 panes each; nvim, opencode as
+  Herdr agents `ws<n>` in state `idle`, lazygit running; `.workspace.env`
+  visible inside panes) and a second run changed nothing.
+- SSH: attach, detach with `Ctrl-b q`, hard-kill of the SSH client, reconnect
+  and reattach; the server and all pane processes survived. (In one of the
+  two containers the ws1 OpenCode tab had returned to a shell by the time the
+  SSH test took its snapshot; it could not be reproduced afterwards, a
+  re-run of `setup-workspaces` relaunches it, see docs/troubleshooting.md.)
+- Server stop/start (reboot stand-in): layout restored, processes gone as
+  documented, `setup-workspaces` relaunched the tools into the restored tabs.
+
+Sandbox differences from a real VM (each only affected *how* a step was
+tested, not the scripts): `go.dev` and `dl.google.com` were blocked, so
+`install/golang.sh` was run against a local mirror of the official
+`go1.27.1.linux-amd64` toolchain (`GO_DL_BASE` override); the COPR host was
+blocked, so LazyGit's COPR path could only be tested up to the repository
+request and the pinned-release fallback was exercised instead; GitHub
+`archive/` downloads were blocked, so nvim-treesitter's parser sources were
+fetched with a `curl` shim that uses `git` (the parsers themselves were
+compiled normally); Node needed the sandbox proxy CA. aarch64 assets are
+pinned and checksummed but were not executed. The systemd unit needs a real
+systemd host.
+
 ## Documentation
 
 - `docs/architecture.md` – workspace = worktree, tab = activity, pane = process; env and port design; why each choice

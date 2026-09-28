@@ -39,6 +39,10 @@
   Logs: `~/.config/herdr/herdr-server.log`.
 - **Very long home paths**: the Unix socket path must stay under 108 bytes;
   keep `~/.config/herdr` or set `HERDR_SOCKET_PATH`.
+- **A stray workspace labelled `~`** (seen once when `verify-environment`
+  started and stopped the server itself before `setup-workspaces` had run):
+  close it with `herdr workspace close <id>` (`herdr workspace list` shows
+  the id) or `Ctrl-b Shift-d` inside it.
 - **Duplicate workspaces after running setup-workspaces twice**: it looks up
   workspaces by label `ws<n>`; if you renamed one, close it or rename it back.
 - **A pane lacks `WORKSPACE_NAME` / ports**: shells opened by hand outside
@@ -46,6 +50,10 @@
   `ws-run ~/worktrees/3 bash` or `set -a; . ./.workspace.env; set +a`.
 - **After a reboot every pane is a bare shell**: expected; run
   `setup-workspaces` to relaunch nvim/opencode/lazygit into the restored tabs.
+- **An nvim/opencode/git tab shows a shell prompt** (the program exited or
+  was never started): run `setup-workspaces` again; it only launches into
+  panes whose foreground process is the bare shell and leaves the rest alone.
+  For OpenCode, `herdr agent list` should then show `ws<n>` as `idle`.
 - **Panes start `/bin/sh` instead of bash**: `terminal.default_shell` in
   `config.toml` must be `/bin/bash` (it is, in the repo copy); reload with
   `herdr server reload-config`.

@@ -108,7 +108,8 @@ else
 fi
 n_ws="$(herdr workspace list | jq -r '[.result.workspaces[] | select(.label | test("^ws[1-5]$"))] | length')"
 if [[ "${n_ws}" == "5" ]]; then ok "five ws1..ws5 workspaces present"; else fail "expected 5 ws<n> workspaces, found ${n_ws} (run bin/setup-workspaces)"; fi
-[[ "${started_here}" == "1" ]] && herdr server stop >/dev/null 2>&1
+# Give the server a moment to apply the probe close before its shutdown snapshot.
+[[ "${started_here}" == "1" ]] && { sleep 1; herdr server stop >/dev/null 2>&1; }
 
 section "opencode + herdr integration"
 if herdr integration status 2>/dev/null | grep -qE '^opencode: current'; then
