@@ -11,7 +11,8 @@
 # <name>.pre-dev-shell.
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# readlink -f: these scripts are usually run through the ~/.local/bin symlinks.
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 log() { printf '\033[1;34m==> %s\033[0m\n' "$*"; }
 ok()  { printf '\033[1;32m    ok: %s\033[0m\n' "$*"; }
 

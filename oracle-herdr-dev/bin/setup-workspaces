@@ -19,7 +19,7 @@ set -euo pipefail
 
 WT_ROOT="${WORKTREES_DIR:-$HOME/worktrees}"
 COUNT=5
-WS_RUN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ws-run"
+WS_RUN="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)/ws-run"
 export PATH="$HOME/.local/bin:$HOME/.opencode/bin:$PATH"
 
 # Messages go to stderr: helper functions return IDs on stdout.

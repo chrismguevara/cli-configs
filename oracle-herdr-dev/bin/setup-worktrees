@@ -10,7 +10,8 @@
 #   4: 5176 8084 8184 5436   5: 5177 8085 8185 5437
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# readlink -f: these scripts are usually run through the ~/.local/bin symlinks.
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 FIXTURE_SRC="${REPO_ROOT}/test/fixture-monorepo"
 SRC_DIR="${FIXTURE_DIR:-$HOME/src/fixture-monorepo}"
 WT_ROOT="${WORKTREES_DIR:-$HOME/worktrees}"

@@ -66,15 +66,17 @@ else
 fi
 health="$(mktemp)"
 nvim --headless "+checkhealth" "+silent! write! ${health}" +qa >/dev/null 2>&1
-# Only errors from components this environment relies on are fatal.
-relevant='nvim-treesitter|vim.lsp|conform|telescope|blink|lazy|vim.treesitter|nvim\b'
-errors="$(grep -E '^- (ERROR|✗)' "${health}" | grep -Ei "${relevant}" || true)"
-if [[ -z "${errors}" ]]; then
-  ok "checkhealth: no relevant ERROR lines ($(grep -c '^- ERROR' "${health}" || true) unrelated, e.g. optional providers)"
+# checkhealth lines look like "- ❌ ERROR ..." / "- ⚠️ WARNING ..." under a
+# "section: " header. Prefix each with its section so relevance can be judged.
+errors="$(awk '/^[A-Za-z0-9._-]+: /{sec=$1} /^- (❌ )?ERROR/{print sec" "$0}' "${health}")"
+# Fatal only for components this environment relies on (providers etc. are optional).
+relevant="$(printf '%s\n' "${errors}" | grep -Ei '^(nvim-treesitter|vim\.treesitter|vim\.lsp|lspconfig|conform|telescope|blink|lazy|vim\.health):' || true)"
+if [[ -z "${relevant}" ]]; then
+  ok "checkhealth: no relevant ERROR lines ($(printf '%s\n' "${errors}" | grep -c ERROR || true) unrelated, e.g. optional providers)"
 else
-  fail "checkhealth errors:"; printf '%s\n' "${errors}"
+  fail "checkhealth errors:"; printf '%s\n' "${relevant}" | sed 's/^/      /'
 fi
-grep -E '^- (ERROR|WARNING)' "${health}" | grep -Ei 'treesitter|lsp|conform|telescope|blink' | sed 's/^/      /'
+awk '/^[A-Za-z0-9._-]+: /{sec=$1} /^- (⚠️ )?WARNING/{print "      " sec " " $0}' "${health}" | grep -Ei 'treesitter|lsp|conform|telescope|blink|lazy' || true
 rm -f "${health}"
 
 if [[ -d "${WT}/frontend/node_modules" ]]; then
