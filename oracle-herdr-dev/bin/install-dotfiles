@@ -37,7 +37,7 @@ if ! grep -qF "${MARK}" "${HOME}/.bashrc" 2>/dev/null; then
   printf '\n%s\n[ -f "$HOME/.config/dev-shell/bashrc" ] && . "$HOME/.config/dev-shell/bashrc"\n' "${MARK}" >> "${HOME}/.bashrc"
   ok "added source line to ~/.bashrc"
 else
-  ok "~/.bashrc already sources the fragment"
+  ok "${HOME}/.bashrc already sources the fragment"
 fi
 
 log "herdr"

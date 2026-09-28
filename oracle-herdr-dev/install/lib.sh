@@ -19,6 +19,7 @@ ok()   { printf '\033[1;32m    ok: %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33mWARN: %s\033[0m\n' "$*" >&2; }
 die()  { printf '\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 
+# shellcheck disable=SC2034  # used by the scripts that source this file
 if [[ ${EUID} -eq 0 ]]; then SUDO=""; else SUDO="sudo"; fi
 
 # Architecture names differ per upstream project.
