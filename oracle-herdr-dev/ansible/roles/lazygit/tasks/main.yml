@@ -20,6 +20,8 @@
         creates: "/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:{{ lazygit_copr | replace('/', ':') }}.repo"
       register: lg_copr_enable
       failed_when: false
+      # changed only when the repo was actually enabled (not when it already existed or the request failed)
+      changed_when: lg_copr_enable.rc == 0 and not (lg_copr_enable.stdout | default('') is search('^skipped'))
     - name: Install lazygit package
       become: true
       ansible.builtin.dnf:
