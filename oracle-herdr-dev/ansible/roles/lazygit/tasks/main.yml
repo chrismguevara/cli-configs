@@ -36,7 +36,7 @@
       when: lg_copr_enable.rc == 0 and (lg_dnf.rc | default(1)) == 0
     - name: COPR route unusable; fall back to the pinned release
       ansible.builtin.debug:
-        msg: "COPR {{ lazygit_copr }} unusable for {{ lg_chroot }} (unreachable or no build): {{ lg_copr_enable.stderr_lines | default(['']) | last }} -- installing release v{{ lg_version }} instead"
+        msg: "COPR {{ lazygit_copr }} unusable for {{ lg_chroot }} (unreachable or no build): {{ lg_copr_enable.stderr | default('') | trim | regex_replace('(?s)^.*\\n', '') | default('(not run in check mode)', true) }} -- installing release v{{ lg_version }} instead"
       when: lg_source != 'copr'
     - name: Remove a half-enabled COPR repository definition
       become: true
