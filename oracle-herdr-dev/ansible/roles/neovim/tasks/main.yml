@@ -1,0 +1,56 @@
+---
+# Mirrors install/neovim.sh: release tarball, pinned SHA-256, /opt/nvim symlink.
+- name: Neovim facts
+  ansible.builtin.set_fact:
+    nvim_version: "{{ versions.NEOVIM_VERSION }}"
+    nvim_prefix: "/opt/nvim-{{ versions.NEOVIM_VERSION }}"
+    nvim_asset: "nvim-linux-{{ arch.nvim }}.tar.gz"
+    nvim_sha256: "{{ versions['NEOVIM_SHA256_' ~ ansible_facts['architecture']] }}"
+
+- name: Installed Neovim version
+  ansible.builtin.command: "{{ nvim_prefix }}/bin/nvim --version"
+  register: nvim_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install Neovim {{ nvim_version }}
+  when: nvim_installed.rc != 0 or ('NVIM ' ~ nvim_version) not in nvim_installed.stdout
+  block:
+    - name: Download (checksum from versions.env) {{ nvim_asset }}
+      ansible.builtin.get_url:
+        url: "https://github.com/neovim/neovim/releases/download/{{ nvim_version }}/{{ nvim_asset }}"
+        dest: "/tmp/{{ nvim_asset }}"
+        checksum: "sha256:{{ nvim_sha256 }}"
+        mode: "0644"
+    - name: Extract to {{ nvim_prefix }}
+      become: true
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ nvim_asset }}"
+        dest: /opt
+        remote_src: true
+        creates: "/opt/nvim-linux-{{ arch.nvim }}/bin/nvim"
+    - name: Rename to versioned prefix
+      become: true
+      ansible.builtin.command: mv /opt/nvim-linux-{{ arch.nvim }} {{ nvim_prefix }}
+      args:
+        creates: "{{ nvim_prefix }}/bin/nvim"
+    - name: Remove tarball
+      ansible.builtin.file:
+        path: "/tmp/{{ nvim_asset }}"
+        state: absent
+
+- name: /opt/nvim -> {{ nvim_prefix }}
+  become: true
+  ansible.builtin.file:
+    src: "{{ nvim_prefix }}"
+    dest: /opt/nvim
+    state: link
+    force: true
+
+- name: /usr/local/bin/nvim -> /opt/nvim/bin/nvim
+  become: true
+  ansible.builtin.file:
+    src: /opt/nvim/bin/nvim
+    dest: /usr/local/bin/nvim
+    state: link
+    force: true

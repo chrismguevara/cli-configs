@@ -101,6 +101,16 @@ Language servers live at the OS/user level on purpose (no Mason):
 bin; `gopls` in `~/go/bin`. oxfmt, TypeScript, ESLint and Vite are project
 dependencies of each frontend.
 
+### Ansible instead of the scripts
+
+`ansible/site.yml` performs sections 3 to 5 (and the sshd drop-in) from a
+control node over SSH, or on the VM with `-i inventory/localhost.yml`. Roles use
+native modules for packages and release downloads (checksums from
+`versions.env`) and call the repository's scripts where they hold the logic
+(nvm, tree-sitter source build, worktrees, Herdr workspaces, verification).
+Installing Ansible on Windows (WSL), macOS, Linux or the VM, and all variables:
+`ansible/README.md`.
+
 ## 4. Dotfiles
 
 ```

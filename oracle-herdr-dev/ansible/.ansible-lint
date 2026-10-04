@@ -1,0 +1,6 @@
+---
+# ansible-lint: `ansible-lint site.yml` from this directory.
+profile: moderate
+skip_list:
+  - var-naming[no-role-prefix]   # short per-role fact names (nvim_*, lg_*, oc_*) are deliberate
+  - yaml[line-length]

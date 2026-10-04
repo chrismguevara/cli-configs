@@ -1,0 +1,83 @@
+---
+# Mirrors install/lazygit.sh: DNF via the README-recommended COPR, falling back
+# to the pinned GitHub release (checksums.txt verified) if the COPR is unusable.
+- name: LazyGit facts
+  ansible.builtin.set_fact:
+    lg_version: "{{ versions.LAZYGIT_VERSION | regex_replace('^v', '') }}"
+    lg_asset: "lazygit_{{ versions.LAZYGIT_VERSION | regex_replace('^v', '') }}_linux_{{ arch.lazygit }}.tar.gz"
+    lg_chroot: "epel-{{ ansible_facts['distribution_major_version'] }}-{{ ansible_facts['architecture'] }}"
+    lg_source: none
+
+- name: Install lazygit from COPR {{ lazygit_copr }}
+  when: lazygit_install == 'copr'
+  block:
+    - name: Enable COPR repository {{ lazygit_copr }}
+      become: true
+      ansible.builtin.command: dnf -y copr enable {{ lazygit_copr }} {{ lg_chroot }}
+      args:
+        creates: "/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:{{ lazygit_copr | replace('/', ':') }}.repo"
+    - name: Install lazygit package
+      become: true
+      ansible.builtin.dnf:
+        name: lazygit
+        state: present
+    - name: Record lazygit source
+      ansible.builtin.set_fact:
+        lg_source: copr
+  rescue:
+    - name: COPR route failed; fall back to the pinned release
+      ansible.builtin.debug:
+        msg: "COPR {{ lazygit_copr }} unusable for {{ lg_chroot }} (unreachable or no build); installing release v{{ lg_version }} instead"
+    - name: Remove the broken COPR repository definition
+      become: true
+      ansible.builtin.command: dnf -y copr remove {{ lazygit_copr }}
+      failed_when: false
+      changed_when: false
+
+- name: Install lazygit from the GitHub release v{{ lg_version }}
+  when: lg_source != 'copr'
+  block:
+    - name: Installed lazygit version
+      ansible.builtin.command: /usr/local/bin/lazygit --version
+      register: lg_installed
+      changed_when: false
+      failed_when: false
+    - name: Download and verify
+      when: lg_installed.rc != 0 or ('version=' ~ lg_version) not in lg_installed.stdout
+      block:
+        - name: Fetch checksums.txt
+          ansible.builtin.uri:
+            url: "https://github.com/jesseduffield/lazygit/releases/download/v{{ lg_version }}/checksums.txt"
+            return_content: true
+          register: lg_checksums
+        - name: Download {{ lg_asset }}
+          ansible.builtin.get_url:
+            url: "https://github.com/jesseduffield/lazygit/releases/download/v{{ lg_version }}/{{ lg_asset }}"
+            dest: "/tmp/{{ lg_asset }}"
+            checksum: "sha256:{{ (lg_checksums.content | regex_search('([0-9a-f]{64})\\s+' ~ lg_asset, '\\1'))[0] }}"
+            mode: "0644"
+        - name: Extract
+          ansible.builtin.unarchive:
+            src: "/tmp/{{ lg_asset }}"
+            dest: /tmp
+            remote_src: true
+            include: [lazygit]
+        - name: Install /usr/local/bin/lazygit
+          become: true
+          ansible.builtin.copy:
+            src: /tmp/lazygit
+            dest: /usr/local/bin/lazygit
+            remote_src: true
+            mode: "0755"
+        - name: Clean up
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop: ["/tmp/{{ lg_asset }}", /tmp/lazygit]
+
+- name: LazyGit works
+  ansible.builtin.command: lazygit --version
+  environment:
+    PATH: "{{ user_path }}"
+  register: lg_final
+  changed_when: false

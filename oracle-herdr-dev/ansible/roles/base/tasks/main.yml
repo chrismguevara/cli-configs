@@ -1,0 +1,63 @@
+---
+# Mirrors install/base.sh: EPEL + CRB, then the base tool set.
+- name: Package dnf-plugins-core (config-manager, copr)
+  become: true
+  ansible.builtin.dnf:
+    name: dnf-plugins-core
+    state: present
+
+- name: Oracle Linux EPEL release package
+  become: true
+  ansible.builtin.dnf:
+    name: oracle-epel-release-el9
+    state: present
+  when: ansible_facts['distribution'] == 'OracleLinux'
+
+- name: EPEL release package (Rocky/Alma)
+  become: true
+  ansible.builtin.dnf:
+    name: epel-release
+    state: present
+  when: ansible_facts['distribution'] != 'OracleLinux'
+
+- name: Repositories to enable
+  ansible.builtin.set_fact:
+    extra_repos: "{{ ['ol9_developer_EPEL', 'ol9_codeready_builder'] if ansible_facts['distribution'] == 'OracleLinux' else ['crb'] }}"
+
+- name: Currently enabled repositories
+  ansible.builtin.command: dnf -q repolist --enabled
+  changed_when: false
+  register: repolist
+
+- name: Enable EPEL/CRB repositories
+  become: true
+  ansible.builtin.command: dnf config-manager --set-enabled {{ item }}
+  loop: "{{ extra_repos }}"
+  when: item not in repolist.stdout
+  changed_when: true
+
+- name: Base packages
+  become: true
+  ansible.builtin.dnf:
+    state: present
+    name:
+      - git
+      - curl
+      - wget
+      - jq
+      - unzip
+      - tar
+      - gzip
+      - gcc
+      - gcc-c++
+      - make
+      - cmake
+      - ripgrep
+      - fd-find
+      - fzf
+      - openssl
+      - ca-certificates
+      - python3
+      - procps-ng
+      - which
+      - findutils

@@ -1,0 +1,65 @@
+---
+# Mirrors install/opencode.sh: pinned release tarball -> ~/.opencode/bin/opencode
+# (the official installer's directory), then Herdr's OpenCode integration.
+# Never touches ~/.config/opencode/opencode.json or ~/.local/share/opencode/auth.json.
+- name: CPU flags (x86_64 builds assume AVX2)
+  ansible.builtin.command: grep -c avx2 /proc/cpuinfo
+  register: avx2
+  changed_when: false
+  failed_when: false
+
+- name: OpenCode facts
+  ansible.builtin.set_fact:
+    oc_version: "{{ versions.OPENCODE_VERSION | regex_replace('^v', '') }}"
+    oc_flavor: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else ('x64' if avx2.rc == 0 else 'x64-baseline') }}"
+
+- name: OpenCode asset
+  ansible.builtin.set_fact:
+    oc_asset: "opencode-linux-{{ oc_flavor }}.tar.gz"
+    oc_sha256: "{{ versions['OPENCODE_SHA256_' ~ (oc_flavor | replace('-', '_'))] }}"
+
+- name: Installed OpenCode version
+  ansible.builtin.command: "{{ home }}/.opencode/bin/opencode --version"
+  register: oc_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install OpenCode {{ oc_version }}
+  when: oc_installed.rc != 0 or oc_installed.stdout.strip() != oc_version
+  block:
+    - name: Download {{ oc_asset }}
+      ansible.builtin.get_url:
+        url: "https://github.com/anomalyco/opencode/releases/download/v{{ oc_version }}/{{ oc_asset }}"
+        dest: "/tmp/{{ oc_asset }}"
+        checksum: "sha256:{{ oc_sha256 }}"
+        mode: "0644"
+    - name: ~/.opencode/bin exists
+      ansible.builtin.file:
+        path: "{{ home }}/.opencode/bin"
+        state: directory
+        mode: "0755"
+    - name: Extract
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ oc_asset }}"
+        dest: "{{ home }}/.opencode/bin"
+        remote_src: true
+    - name: Remove tarball
+      ansible.builtin.file:
+        path: "/tmp/{{ oc_asset }}"
+        state: absent
+
+- name: ~/.config/opencode exists (required by the integration installer)
+  ansible.builtin.file:
+    path: "{{ home }}/.config/opencode"
+    state: directory
+    mode: "0755"
+
+- name: Herdr OpenCode integration status
+  ansible.builtin.command: "{{ home }}/.local/bin/herdr integration status"
+  register: herdr_int
+  changed_when: false
+  failed_when: false
+
+- name: Herdr OpenCode integration install
+  ansible.builtin.command: "{{ home }}/.local/bin/herdr integration install opencode"
+  when: "herdr_int.rc != 0 or not (herdr_int.stdout is regex('(?m)^opencode: current'))"

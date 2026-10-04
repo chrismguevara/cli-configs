@@ -1,0 +1,55 @@
+---
+# Mirrors install/golang.sh: official tarball (.sha256 verified) -> /usr/local/go,
+# then gopls / goimports / staticcheck into ~/go/bin.
+- name: Go facts
+  ansible.builtin.set_fact:
+    go_version: "{{ versions.GO_VERSION }}"
+    go_tarball: "go{{ versions.GO_VERSION }}.linux-{{ arch.go }}.tar.gz"
+
+- name: Installed Go version
+  ansible.builtin.command: /usr/local/go/bin/go version
+  register: go_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install Go {{ go_version }}
+  when: go_installed.rc != 0 or ('go' ~ go_version ~ ' ') not in go_installed.stdout
+  block:
+    - name: Fetch the published SHA-256
+      ansible.builtin.uri:
+        url: "{{ go_dl_base }}/{{ go_tarball }}.sha256"
+        return_content: true
+      register: go_sha
+    - name: Download {{ go_tarball }}
+      ansible.builtin.get_url:
+        url: "{{ go_dl_base }}/{{ go_tarball }}"
+        dest: "/tmp/{{ go_tarball }}"
+        checksum: "sha256:{{ go_sha.content | trim | split(' ') | first }}"
+        mode: "0644"
+    - name: Remove the previous toolchain
+      become: true
+      ansible.builtin.file:
+        path: /usr/local/go
+        state: absent
+    - name: Extract to /usr/local/go
+      become: true
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ go_tarball }}"
+        dest: /usr/local
+        remote_src: true
+    - name: Remove tarball
+      ansible.builtin.file:
+        path: "/tmp/{{ go_tarball }}"
+        state: absent
+
+- name: Go tools (gopls, goimports, staticcheck)
+  ansible.builtin.command: /usr/local/go/bin/go install {{ item.pkg }}
+  args:
+    creates: "{{ home }}/go/bin/{{ item.bin }}"
+  environment:
+    GOTOOLCHAIN: local
+    PATH: "{{ user_path }}"
+  loop:
+    - { pkg: golang.org/x/tools/gopls@latest, bin: gopls }
+    - { pkg: golang.org/x/tools/cmd/goimports@latest, bin: goimports }
+    - { pkg: honnef.co/go/tools/cmd/staticcheck@latest, bin: staticcheck }

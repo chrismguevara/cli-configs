@@ -1,0 +1,12 @@
+---
+- name: Key-only sshd drop-in
+  become: true
+  ansible.builtin.copy:
+    src: 50-key-only.conf
+    dest: /etc/ssh/sshd_config.d/50-key-only.conf
+    owner: root
+    group: root
+    mode: "0600"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Restart sshd
+  when: manage_sshd

@@ -1,0 +1,23 @@
+---
+# nvm + Node LTS + Corepack/pnpm + global language servers. Delegated to the
+# idempotent install/node.sh (nvm's installer, corepack and npm -g do not map
+# cleanly onto builtin modules); "changed" is derived from its output.
+- name: Run install/node.sh for nvm, Node LTS, pnpm and language servers at versions.env pins
+  ansible.builtin.command: "{{ repo_dir }}/install/node.sh"
+  register: node_sh
+  changed_when: >-
+    'Downloading and installing node' in node_sh.stdout
+    or 'Cloning into' in node_sh.stdout
+    or 'Downloading nvm' in node_sh.stdout
+    or 'added ' in node_sh.stdout
+  environment:
+    PATH: "{{ user_path }}"
+
+- name: Node and language servers present
+  ansible.builtin.shell: |
+    set -o pipefail
+    export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"
+    node --version && pnpm --version && command -v vtsls && command -v vscode-eslint-language-server
+  args:
+    executable: /bin/bash
+  changed_when: false

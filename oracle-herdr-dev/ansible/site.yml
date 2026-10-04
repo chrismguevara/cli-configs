@@ -1,0 +1,41 @@
+---
+# Oracle Linux 9 terminal development environment.
+#   ansible-playbook site.yml                       # remote VM from inventory/hosts.yml
+#   ansible-playbook -i inventory/localhost.yml site.yml   # on the VM itself
+#   ansible-playbook site.yml --tags herdr,opencode  # one or two roles only
+# Roles mirror install/*.sh and bin/* and read ../versions.env for every pin.
+- name: Oracle Linux 9 dev VM
+  hosts: dev
+  gather_facts: true
+  # install_env (group_vars/all.yml) is applied to every task: proxy settings,
+  # extra CA bundles for Node, etc. Empty by default.
+  environment: "{{ install_env }}"
+  roles:
+    - role: common
+      tags: [always]
+    - role: sshd
+      tags: [sshd]
+    - role: base
+      tags: [base]
+    - role: neovim
+      tags: [neovim]
+    - role: tree_sitter
+      tags: [tree_sitter, neovim]
+    - role: lazygit
+      tags: [lazygit]
+    - role: golang
+      tags: [golang]
+    - role: node
+      tags: [node]
+    - role: herdr
+      tags: [herdr]
+    - role: opencode
+      tags: [opencode]
+    - role: dotfiles
+      tags: [dotfiles]
+    - role: worktrees
+      tags: [worktrees]
+    - role: workspaces
+      tags: [workspaces]
+    - role: verify
+      tags: [verify]

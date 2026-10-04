@@ -1,0 +1,12 @@
+# Run the playbook on the VM itself (after `sudo dnf -y install ansible-core`):
+#   cd ~/cli-configs/oracle-herdr-dev/ansible
+#   ansible-playbook -i inventory/localhost.yml site.yml
+all:
+  children:
+    dev:
+      hosts:
+        localhost:
+          ansible_connection: local
+          # The repository is already checked out here; do not clone over it.
+          manage_repo_checkout: false
+          repo_dir: "{{ playbook_dir | dirname }}"

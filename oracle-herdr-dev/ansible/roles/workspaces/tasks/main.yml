@@ -1,0 +1,19 @@
+---
+# Herdr server + five workspaces. The script starts `herdr server` detached when
+# none is running and only creates what is missing.
+- name: Run bin/setup-workspaces
+  ansible.builtin.command: "{{ repo_dir }}/bin/setup-workspaces"
+  register: workspaces
+  changed_when: >-
+    'created w' in workspaces.stderr
+    or 'tab ' in workspaces.stderr
+    or 'dev panes:' in workspaces.stderr
+    or ': nvim .' in workspaces.stderr
+    or ': opencode' in workspaces.stderr
+    or ': lazygit' in workspaces.stderr
+    or 'starting headless herdr server' in workspaces.stderr
+  environment:
+    PATH: "{{ user_path }}"
+    SHELL: /bin/bash
+    LANG: C.UTF-8
+  when: run_workspaces

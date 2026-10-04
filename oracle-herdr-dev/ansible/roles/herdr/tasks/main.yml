@@ -1,0 +1,29 @@
+---
+# Mirrors install/herdr.sh: pinned static binary -> ~/.local/bin/herdr,
+# SHA-256 from Herdr's release manifest recorded in versions.env.
+- name: Herdr facts
+  ansible.builtin.set_fact:
+    herdr_version: "{{ versions.HERDR_VERSION | regex_replace('^v', '') }}"
+    herdr_asset: "herdr-linux-{{ arch.herdr }}"
+    herdr_sha256: "{{ versions['HERDR_SHA256_' ~ ansible_facts['architecture']] }}"
+
+- name: ~/.local/bin exists
+  ansible.builtin.file:
+    path: "{{ home }}/.local/bin"
+    state: directory
+    mode: "0755"
+
+- name: Installed Herdr version
+  ansible.builtin.command: "{{ home }}/.local/bin/herdr --version"
+  register: herdr_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install herdr {{ herdr_version }}
+  ansible.builtin.get_url:
+    url: "https://github.com/herdrdev/herdr/releases/download/v{{ herdr_version }}/{{ herdr_asset }}"
+    dest: "{{ home }}/.local/bin/herdr"
+    checksum: "sha256:{{ herdr_sha256 }}"
+    mode: "0755"
+    force: true
+  when: herdr_installed.rc != 0 or ('herdr ' ~ herdr_version) not in herdr_installed.stdout

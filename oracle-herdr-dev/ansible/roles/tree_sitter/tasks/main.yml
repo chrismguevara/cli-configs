@@ -1,0 +1,63 @@
+---
+# Mirrors install/tree-sitter.sh: official binary when it runs on this glibc,
+# otherwise the script's cargo build of the same version from crates.io.
+- name: Tree-sitter facts
+  ansible.builtin.set_fact:
+    ts_version: "{{ versions.TREE_SITTER_VERSION | regex_replace('^v', '') }}"
+    ts_asset: "tree-sitter-linux-{{ arch.ts }}.gz"
+    ts_sha256: "{{ versions['TREE_SITTER_SHA256_' ~ ansible_facts['architecture']] }}"
+
+- name: Installed tree-sitter version
+  ansible.builtin.command: /usr/local/bin/tree-sitter --version
+  register: ts_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install tree-sitter {{ ts_version }}
+  when: ts_installed.rc != 0 or ('tree-sitter ' ~ ts_version) not in ts_installed.stdout
+  block:
+    - name: Download {{ ts_asset }}
+      ansible.builtin.get_url:
+        url: "https://github.com/tree-sitter/tree-sitter/releases/download/v{{ ts_version }}/{{ ts_asset }}"
+        dest: "/tmp/{{ ts_asset }}"
+        checksum: "sha256:{{ ts_sha256 }}"
+        mode: "0644"
+    - name: Decompress
+      ansible.builtin.command: gunzip -kf /tmp/{{ ts_asset }}
+      args:
+        creates: "/tmp/tree-sitter-linux-{{ arch.ts }}"
+    - name: Executable bit on the probe binary
+      ansible.builtin.file:
+        path: "/tmp/tree-sitter-linux-{{ arch.ts }}"
+        mode: "0755"
+    - name: Does the release binary run here? (needs glibc >= 2.39; EL9 has 2.34)
+      ansible.builtin.command: /tmp/tree-sitter-linux-{{ arch.ts }} --version
+      register: ts_probe
+      changed_when: false
+      failed_when: false
+    - name: Install the release binary
+      become: true
+      ansible.builtin.copy:
+        src: "/tmp/tree-sitter-linux-{{ arch.ts }}"
+        dest: /usr/local/bin/tree-sitter
+        remote_src: true
+        mode: "0755"
+      when: ts_probe.rc == 0
+    - name: Build from source instead (install/tree-sitter.sh, cargo + pinned Rust)
+      ansible.builtin.command: "{{ repo_dir }}/install/tree-sitter.sh"
+      when: ts_probe.rc != 0
+      register: ts_build
+      changed_when: "'built from source' in ts_build.stdout or 'installed release binary' in ts_build.stdout"
+    - name: Clean up
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/tmp/{{ ts_asset }}"
+        - "/tmp/tree-sitter-linux-{{ arch.ts }}"
+
+- name: Tree-sitter is the pinned version
+  ansible.builtin.command: /usr/local/bin/tree-sitter --version
+  register: ts_final
+  changed_when: false
+  failed_when: ('tree-sitter ' ~ ts_version) not in ts_final.stdout

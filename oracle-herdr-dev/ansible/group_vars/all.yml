@@ -1,0 +1,35 @@
+---
+# Where this repository lives on the target. Remote runs clone it (role common);
+# inventory/localhost.yml points at the existing checkout instead.
+manage_repo_checkout: true
+repo_url: https://github.com/chrismguevara/cli-configs.git
+repo_version: claude/rocky-herdr-dev-setup-4zxn1r
+repo_checkout_dir: "{{ ansible_facts['user_dir'] }}/cli-configs"
+repo_dir: "{{ repo_checkout_dir }}/oracle-herdr-dev"
+
+# Single source of truth for versions and checksums: ../versions.env, parsed on
+# the controller. KEY=VALUE lines only; comments ignored.
+versions: >-
+  {{ dict(lookup('file', playbook_dir ~ '/../versions.env')
+          | regex_findall('(?m)^([A-Za-z_][A-Za-z0-9_]*)=([^\n#]*)')) }}
+
+# Per-project architecture names (ansible_architecture is x86_64 | aarch64).
+arch_map:
+  x86_64:  { go: amd64, nvim: x86_64, ts: x64,   lazygit: x86_64, herdr: x86_64,  opencode: x64 }
+  aarch64: { go: arm64, nvim: arm64,  ts: arm64, lazygit: arm64,  herdr: aarch64, opencode: arm64 }
+arch: "{{ arch_map[ansible_facts['architecture']] }}"
+
+# Official download locations. go_dl_base is overridable for mirrors/offline tests.
+go_dl_base: https://go.dev/dl
+lazygit_install: copr            # copr | release  (release = pinned GitHub tarball)
+lazygit_copr: dejan/lazygit
+
+# Extra environment for every task on the target, e.g. behind a proxy:
+#   install_env: { HTTPS_PROXY: "http://proxy:3128", NO_PROXY: "localhost,127.0.0.1" }
+install_env: {}
+
+# Optional pieces
+manage_sshd: true                # key-only sshd drop-in (same as cloud-init.yaml)
+run_worktrees: true              # bin/setup-worktrees (fixture repo + ~/worktrees/1..5)
+run_workspaces: true             # bin/setup-workspaces (herdr server + ws1..ws5)
+run_verify: true                 # bin/verify-environment at the end

@@ -1,0 +1,42 @@
+---
+- name: Oracle Linux 9 (or EL9 clone) is required
+  ansible.builtin.assert:
+    that:
+      - ansible_facts['os_family'] == 'RedHat'
+      - ansible_facts['distribution_major_version'] == '9'
+    fail_msg: "expected an EL9 system, got {{ ansible_facts['distribution'] }} {{ ansible_facts['distribution_version'] }}"
+
+- name: Pinned versions from versions.env
+  ansible.builtin.assert:
+    that:
+      - versions.NEOVIM_VERSION is defined
+      - versions.HERDR_VERSION is defined
+      - versions.GO_VERSION is defined
+    fail_msg: "versions.env could not be parsed from {{ playbook_dir }}/../versions.env"
+
+- name: Git is needed for the repository checkout
+  become: true
+  ansible.builtin.dnf:
+    name: git
+    state: present
+  when: manage_repo_checkout
+
+- name: Repository checkout ({{ repo_version }})
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ repo_checkout_dir }}"
+    version: "{{ repo_version }}"
+    update: true
+  when: manage_repo_checkout
+
+- name: Repository directory exists
+  ansible.builtin.stat:
+    path: "{{ repo_dir }}/versions.env"
+  register: repo_versions
+  failed_when: not repo_versions.stat.exists
+
+- name: Common paths
+  ansible.builtin.set_fact:
+    home: "{{ ansible_facts['user_dir'] }}"
+    user_path: >-
+      {{ ansible_facts['user_dir'] }}/.local/bin:{{ ansible_facts['user_dir'] }}/.opencode/bin:{{ ansible_facts['user_dir'] }}/go/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin

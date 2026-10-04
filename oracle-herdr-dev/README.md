@@ -15,6 +15,7 @@ oracle-herdr-dev/
 ├── infra/terraform/        # OCI VCN + SSH-only security list + OL9 instance (+ cloud-init)
 ├── infra/scripts/          # same thing with the OCI CLI
 ├── install/                # base, neovim, tree-sitter, lazygit, golang, node, herdr, opencode, all
+├── ansible/                # the same steps as an Ansible playbook (remote or on the VM)
 ├── dotfiles/               # bashrc fragment, herdr/config.toml, nvim/ (lazy.nvim), systemd unit
 ├── bin/                    # install-dotfiles, setup-worktrees, setup-workspaces, ws-run, verify-environment
 ├── test/fixture-monorepo/  # Vite+React+TS frontend + Go backend used by the checks
@@ -36,7 +37,9 @@ oracle-herdr-dev/
    ```
    ssh -L 5173:localhost:5173 -L 8081:localhost:8081 -L 8181:localhost:8181 -L 5433:localhost:5433 opc@<public-ip>
    ```
-3. **Clone this repository on the VM and install everything**:
+3. **Install everything** — pick one of two equivalent routes.
+
+   *Shell scripts, on the VM:*
    ```
    sudo dnf -y install git
    git clone https://github.com/chrismguevara/cli-configs.git ~/cli-configs
@@ -44,13 +47,19 @@ oracle-herdr-dev/
    ./install/all.sh          # base pkgs, neovim, tree-sitter, lazygit, go, node, herdr, opencode
    ./bin/install-dotfiles    # ~/.config/dev-shell/bashrc, ~/.config/herdr, ~/.config/nvim, ~/.local/bin
    exec bash                 # pick up PATH, nvm, aliases
-   ```
-4. **Create the fixture worktrees and the five Herdr workspaces**:
-   ```
    setup-worktrees           # ~/src/fixture-monorepo + ~/worktrees/1..5 (+ pnpm install)
    setup-workspaces          # herdr server + ws1..ws5, tabs nvim/opencode/git/dev/shell/scratch
    verify-environment        # versions, headless Neovim/LSP/format checks, herdr, fixture
    ```
+
+   *Ansible, from your workstation (WSL/macOS/Linux):*
+   ```
+   cd oracle-herdr-dev/ansible
+   cp inventory/hosts.yml.example inventory/hosts.yml   # set the VM's public IP
+   ansible-playbook site.yml                            # clones the repo on the VM and does all of the above
+   ```
+   How to install Ansible and run it on the VM itself: `ansible/README.md`.
+4. **Check**: `verify-environment` on the VM (the Ansible route runs it as its last step).
 5. **Work**: `herdr`, then `Ctrl-b w` to pick a worktree and `Ctrl-b 1..6` for
    nvim / opencode / git / dev / shell / scratch. `Ctrl-b q` detaches.
 

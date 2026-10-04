@@ -1,0 +1,15 @@
+---
+- name: Run bin/verify-environment
+  ansible.builtin.command: "{{ repo_dir }}/bin/verify-environment"
+  register: verify
+  changed_when: false
+  failed_when: verify.rc != 0
+  environment:
+    PATH: "{{ user_path }}"
+    LANG: C.UTF-8
+  when: run_verify
+
+- name: Verification summary
+  ansible.builtin.debug:
+    msg: "{{ (verify.stdout_lines | default([]))[-1:] + (verify.stdout_lines | default([]) | select('search', 'FAIL') | list) }}"
+  when: run_verify

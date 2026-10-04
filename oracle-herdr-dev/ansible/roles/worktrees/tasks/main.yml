@@ -1,0 +1,12 @@
+---
+# Fixture repository, ~/worktrees/1..5, .workspace.env files, pnpm install.
+- name: Run bin/setup-worktrees
+  ansible.builtin.command: "{{ repo_dir }}/bin/setup-worktrees"
+  register: worktrees
+  changed_when: >-
+    'creating' in worktrees.stdout ~ worktrees.stderr
+    or 'wrote ' in worktrees.stdout ~ worktrees.stderr
+    or 'pnpm install in' in worktrees.stdout ~ worktrees.stderr
+  environment:
+    PATH: "{{ user_path }}"
+  when: run_worktrees
