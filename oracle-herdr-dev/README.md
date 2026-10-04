@@ -163,6 +163,16 @@ sshd, following the README procedure exactly:
 - Server stop/start (reboot stand-in): layout restored, processes gone as
   documented, `setup-workspaces` relaunched the tools into the restored tabs.
 
+Ansible route (`ansible/site.yml`), same container image, new container, over
+SSH from a control node with ansible-core 2.19: first run installed everything
+and ended with `verify-environment` reporting 43 ok / 0 failed (after two
+fixes it surfaced: pnpm lookup outside interactive shells and a `TERM` for
+headless checkhealth); further runs changed nothing except where the
+repository checkout had new commits. The same playbook also ran on the VM
+image itself with Oracle Linux's AppStream ansible-core 2.14.18
+(`-i inventory/localhost.yml`), exit 0. `ansible-lint` passes at the
+production profile.
+
 Sandbox differences from a real VM (each only affected *how* a step was
 tested, not the scripts): `go.dev` and `dl.google.com` were blocked, so
 `install/golang.sh` was run against a local mirror of the official
