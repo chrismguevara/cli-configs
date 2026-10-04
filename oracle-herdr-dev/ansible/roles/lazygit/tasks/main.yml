@@ -11,28 +11,37 @@
 - name: Install lazygit from COPR {{ lazygit_copr }}
   when: lazygit_install == 'copr'
   block:
+    # Failures here are expected when the COPR has no EL9 build or is unreachable;
+    # they select the release fallback below instead of failing the play.
     - name: Enable COPR repository {{ lazygit_copr }}
       become: true
       ansible.builtin.command: dnf -y copr enable {{ lazygit_copr }} {{ lg_chroot }}
       args:
         creates: "/etc/yum.repos.d/_copr:copr.fedorainfracloud.org:{{ lazygit_copr | replace('/', ':') }}.repo"
+      register: lg_copr_enable
+      failed_when: false
     - name: Install lazygit package
       become: true
       ansible.builtin.dnf:
         name: lazygit
         state: present
+      register: lg_dnf
+      failed_when: false
+      when: lg_copr_enable.rc == 0
     - name: Record lazygit source
       ansible.builtin.set_fact:
         lg_source: copr
-  rescue:
-    - name: COPR route failed; fall back to the pinned release
+      when: lg_copr_enable.rc == 0 and (lg_dnf.rc | default(1)) == 0
+    - name: COPR route unusable; fall back to the pinned release
       ansible.builtin.debug:
-        msg: "COPR {{ lazygit_copr }} unusable for {{ lg_chroot }} (unreachable or no build); installing release v{{ lg_version }} instead"
-    - name: Remove the broken COPR repository definition
+        msg: "COPR {{ lazygit_copr }} unusable for {{ lg_chroot }} (unreachable or no build): {{ (lg_copr_enable.stderr_lines | default(['']))[-1] }} -- installing release v{{ lg_version }} instead"
+      when: lg_source != 'copr'
+    - name: Remove a half-enabled COPR repository definition
       become: true
       ansible.builtin.command: dnf -y copr remove {{ lazygit_copr }}
       failed_when: false
       changed_when: false
+      when: lg_source != 'copr' and lg_copr_enable.rc == 0
 
 - name: Install lazygit from the GitHub release v{{ lg_version }}
   when: lg_source != 'copr'

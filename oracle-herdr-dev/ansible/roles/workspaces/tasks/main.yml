@@ -4,14 +4,9 @@
 - name: Run bin/setup-workspaces
   ansible.builtin.command: "{{ repo_dir }}/bin/setup-workspaces"
   register: workspaces
+  # The script logs what it creates/launches on stderr; "already ..." lines are no-ops.
   changed_when: >-
-    'created w' in workspaces.stderr
-    or 'tab ' in workspaces.stderr
-    or 'dev panes:' in workspaces.stderr
-    or ': nvim .' in workspaces.stderr
-    or ': opencode' in workspaces.stderr
-    or ': lazygit' in workspaces.stderr
-    or 'starting headless herdr server' in workspaces.stderr
+    workspaces.stderr is regex('created w[0-9]+|tab [a-z]+ -> w[0-9]+:t[0-9]+|dev panes:|: nvim \.|: opencode \(agent|: lazygit$|starting headless herdr server', multiline=True)
   environment:
     PATH: "{{ user_path }}"
     SHELL: /bin/bash
