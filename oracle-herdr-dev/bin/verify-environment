@@ -9,6 +9,7 @@ source "${REPO_ROOT}/versions.env"
 # shellcheck disable=SC1091
 [[ -f "${HOME}/.config/dev-shell/bashrc" ]] && . "${HOME}/.config/dev-shell/bashrc"
 export PATH="${HOME}/.local/bin:${HOME}/.opencode/bin:${HOME}/go/bin:/usr/local/go/bin:${PATH}"
+export TERM="${TERM:-xterm-256color}"   # non-interactive callers (ansible, cron) have none
 
 WT="${WORKTREES_DIR:-$HOME/worktrees}/1"
 PASS=0; FAIL=0

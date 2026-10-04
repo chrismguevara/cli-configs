@@ -33,7 +33,7 @@ PACKAGES=(
   git curl wget jq unzip tar gzip
   gcc gcc-c++ make cmake
   ripgrep fd-find fzf
-  openssl ca-certificates python3
+  openssl ca-certificates python3 ncurses
   procps-ng which findutils
 )
 ${SUDO} dnf -y install "${PACKAGES[@]}"

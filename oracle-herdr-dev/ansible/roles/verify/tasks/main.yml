@@ -7,6 +7,7 @@
   environment:
     PATH: "{{ user_path }}"
     LANG: C.UTF-8
+    TERM: xterm-256color
   when: run_verify
 
 - name: Verification summary

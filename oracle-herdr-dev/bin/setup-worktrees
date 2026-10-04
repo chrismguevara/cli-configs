@@ -72,6 +72,11 @@ ENV
 done
 
 # 3. frontend dependencies (project-local oxfmt/typescript/eslint per worktree) --
+# pnpm lives under nvm; load it when this runs outside an interactive shell.
+if ! command -v pnpm >/dev/null && [[ -s "${NVM_DIR:-$HOME/.nvm}/nvm.sh" ]]; then
+  # shellcheck disable=SC1091
+  . "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+fi
 if command -v pnpm >/dev/null; then
   for n in $(seq 1 "${COUNT}"); do
     fe="${WT_ROOT}/${n}/frontend"

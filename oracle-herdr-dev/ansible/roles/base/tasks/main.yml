@@ -58,6 +58,7 @@
       - openssl
       - ca-certificates
       - python3
+      - ncurses
       - procps-ng
       - which
       - findutils
