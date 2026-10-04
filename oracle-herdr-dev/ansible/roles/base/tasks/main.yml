@@ -25,6 +25,7 @@
     extra_repos: "{{ ['ol9_developer_EPEL', 'ol9_codeready_builder'] if ansible_facts['distribution'] == 'OracleLinux' else ['crb'] }}"
 
 - name: Currently enabled repositories
+  check_mode: false
   ansible.builtin.command: dnf -q repolist --enabled
   changed_when: false
   register: repolist

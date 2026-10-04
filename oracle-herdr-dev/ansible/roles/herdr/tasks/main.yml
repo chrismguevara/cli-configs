@@ -14,6 +14,7 @@
     mode: "0755"
 
 - name: Installed Herdr version
+  check_mode: false
   ansible.builtin.command: "{{ home }}/.local/bin/herdr --version"
   register: herdr_installed
   changed_when: false

@@ -49,6 +49,7 @@
   when: lg_source != 'copr'
   block:
     - name: Installed lazygit version
+      check_mode: false
       ansible.builtin.command: /usr/local/bin/lazygit --version
       register: lg_installed
       changed_when: false
@@ -87,6 +88,7 @@
           loop: ["/tmp/{{ lg_asset }}", /tmp/lazygit]
 
 - name: LazyGit works
+  check_mode: false
   ansible.builtin.command: lazygit --version
   environment:
     PATH: "{{ user_path }}"

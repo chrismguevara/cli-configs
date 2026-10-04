@@ -7,6 +7,7 @@
     go_tarball: "go{{ versions.GO_VERSION }}.linux-{{ arch.go }}.tar.gz"
 
 - name: Installed Go version
+  check_mode: false
   ansible.builtin.command: /usr/local/go/bin/go version
   register: go_installed
   changed_when: false

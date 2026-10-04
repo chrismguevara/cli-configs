@@ -21,13 +21,22 @@
     state: present
   when: manage_repo_checkout
 
+# The dotfiles are symlinked into this checkout, so a user may have uncommitted
+# edits there; git refuses to update then. Keep going with the local copy and say so.
 - name: Repository checkout ({{ repo_version }})
   ansible.builtin.git:
     repo: "{{ repo_url }}"
     dest: "{{ repo_checkout_dir }}"
     version: "{{ repo_version }}"
     update: true
+  register: repo_git
+  failed_when: repo_git.failed | default(false) and 'Local modifications exist' not in (repo_git.msg | default(''))
   when: manage_repo_checkout
+
+- name: Local modifications left untouched
+  ansible.builtin.debug:
+    msg: "{{ repo_checkout_dir }} has uncommitted changes; not updated to {{ repo_version }} (commit or stash them to let the playbook pull)"
+  when: manage_repo_checkout and 'Local modifications exist' in (repo_git.msg | default(''))
 
 - name: Repository directory exists
   ansible.builtin.stat:

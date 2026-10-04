@@ -42,6 +42,12 @@
     force: true
   loop: "{{ dotfile_links }}"
 
+- name: ~/.local/bin exists
+  ansible.builtin.file:
+    path: "{{ home }}/.local/bin"
+    state: directory
+    mode: "0755"
+
 - name: ~/.local/bin symlinks for bin/* executables
   ansible.builtin.file:
     src: "{{ item.path }}"
@@ -52,11 +58,11 @@
   loop_control:
     label: "{{ item.path | basename }}"
 
+# Same line bin/install-dotfiles adds; either tool recognises the other's.
 - name: ~/.bashrc sources the fragment
-  ansible.builtin.blockinfile:
+  ansible.builtin.lineinfile:
     path: "{{ home }}/.bashrc"
     create: true
     mode: "0644"
-    marker: "# {mark} dev-shell (oracle-herdr-dev) managed by ansible"
-    block: |
-      [ -f "$HOME/.config/dev-shell/bashrc" ] && . "$HOME/.config/dev-shell/bashrc"
+    regexp: '\.config/dev-shell/bashrc'
+    line: '[ -f "$HOME/.config/dev-shell/bashrc" ] && . "$HOME/.config/dev-shell/bashrc"'

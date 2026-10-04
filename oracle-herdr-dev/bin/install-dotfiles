@@ -34,7 +34,8 @@ link() { # link SRC DEST
 log "shell fragment"
 link "${REPO_ROOT}/dotfiles/bashrc" "${HOME}/.config/dev-shell/bashrc"
 MARK="# dev-shell (oracle-herdr-dev): source the shared shell fragment"
-if ! grep -qF "${MARK}" "${HOME}/.bashrc" 2>/dev/null; then
+# Detect the source line itself (ansible/roles/dotfiles adds the same line without the comment).
+if ! grep -qF '.config/dev-shell/bashrc' "${HOME}/.bashrc" 2>/dev/null; then
   printf '\n%s\n[ -f "$HOME/.config/dev-shell/bashrc" ] && . "$HOME/.config/dev-shell/bashrc"\n' "${MARK}" >> "${HOME}/.bashrc"
   ok "added source line to ~/.bashrc"
 else

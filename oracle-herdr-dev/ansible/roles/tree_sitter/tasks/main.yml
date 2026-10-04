@@ -8,6 +8,7 @@
     ts_sha256: "{{ versions['TREE_SITTER_SHA256_' ~ ansible_facts['architecture']] }}"
 
 - name: Installed tree-sitter version
+  check_mode: false
   ansible.builtin.command: /usr/local/bin/tree-sitter --version
   register: ts_installed
   changed_when: false
@@ -31,6 +32,7 @@
         path: "/tmp/tree-sitter-linux-{{ arch.ts }}"
         mode: "0755"
     - name: Does the release binary run here? (needs glibc >= 2.39; EL9 has 2.34)
+      check_mode: false
       ansible.builtin.command: /tmp/tree-sitter-linux-{{ arch.ts }} --version
       register: ts_probe
       changed_when: false
@@ -57,6 +59,7 @@
         - "/tmp/tree-sitter-linux-{{ arch.ts }}"
 
 - name: Tree-sitter is the pinned version
+  check_mode: false
   ansible.builtin.command: /usr/local/bin/tree-sitter --version
   register: ts_final
   changed_when: false

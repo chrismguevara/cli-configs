@@ -3,6 +3,7 @@
 # (the official installer's directory), then Herdr's OpenCode integration.
 # Never touches ~/.config/opencode/opencode.json or ~/.local/share/opencode/auth.json.
 - name: CPU flags (x86_64 builds assume AVX2)
+  check_mode: false
   ansible.builtin.command: grep -c avx2 /proc/cpuinfo
   register: avx2
   changed_when: false
@@ -19,6 +20,7 @@
     oc_sha256: "{{ versions['OPENCODE_SHA256_' ~ (oc_flavor | replace('-', '_'))] }}"
 
 - name: Installed OpenCode version
+  check_mode: false
   ansible.builtin.command: "{{ home }}/.opencode/bin/opencode --version"
   register: oc_installed
   changed_when: false
@@ -55,6 +57,7 @@
     mode: "0755"
 
 - name: Herdr OpenCode integration status
+  check_mode: false
   ansible.builtin.command: "{{ home }}/.local/bin/herdr integration status"
   register: herdr_int
   changed_when: false
