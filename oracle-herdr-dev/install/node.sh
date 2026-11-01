@@ -9,7 +9,9 @@ export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 
 log "nvm ${NVM_VERSION}"
-if [[ -s "${NVM_DIR}/nvm.sh" ]] && grep -q "\"${NVM_VERSION}\"" "${NVM_DIR}/nvm.sh" 2>/dev/null; then
+# nvm.sh reports its own version; compare it with the pin instead of grepping the file.
+installed_nvm="$(bash -c ". '${NVM_DIR}/nvm.sh' --no-use >/dev/null 2>&1 && nvm --version" 2>/dev/null || true)"
+if [[ "${installed_nvm}" == "${NVM_VERSION#v}" ]]; then
   ok "nvm ${NVM_VERSION} already installed"
 else
   tmp="$(mktmp)"

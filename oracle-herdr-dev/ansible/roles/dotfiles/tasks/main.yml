@@ -26,8 +26,12 @@
   loop: "{{ dotfile_links }}"
   register: dest_stats
 
-- name: Back up pre-existing regular files/directories once (*.pre-dev-shell)
-  ansible.builtin.command: mv {{ item.stat.path }} {{ item.stat.path }}.pre-dev-shell
+- name: Back up pre-existing regular files/directories (*.pre-dev-shell, never overwriting an older backup)
+  ansible.builtin.shell: |
+    set -e
+    bak="{{ item.stat.path }}.pre-dev-shell"
+    [ -e "$bak" ] && bak="$bak.$(date +%s)"
+    mv "{{ item.stat.path }}" "$bak"
   loop: "{{ dest_stats.results }}"
   loop_control:
     label: "{{ item.stat.path | default(item.item.dest) }}"

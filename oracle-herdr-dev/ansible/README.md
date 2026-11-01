@@ -102,7 +102,7 @@ task on the target): `-e '{"install_env": {"HTTPS_PROXY": "http://proxy:3128"}}'
 | variable                 | default                                   | meaning                                            |
 |--------------------------|-------------------------------------------|----------------------------------------------------|
 | `manage_repo_checkout`   | `true`                                    | clone/update this repository on the target (`false` in localhost.yml) |
-| `repo_url`, `repo_version` | this GitHub repo, branch                | what to check out                                  |
+| `repo_url`, `repo_version` | this GitHub repo, branch                | what to check out; set `repo_version` to a tag or commit for a frozen rebuild |
 | `repo_dir`               | `~/cli-configs/oracle-herdr-dev`          | where scripts and dotfiles are read from on the target |
 | `go_dl_base`             | `https://go.dev/dl`                       | Go download base (mirrors/offline)                 |
 | `lazygit_install`        | `copr`                                    | `copr` (dnf) or `release` (pinned tarball)         |
@@ -114,6 +114,30 @@ Versions are **not** variables here on purpose: they are parsed from
 `versions.env` so the scripts and the playbook can never disagree. To upgrade a
 tool, change `versions.env` (and its checksum) and re-run the playbook with that
 role's tag.
+
+## What gets installed
+
+| component | version pin (`versions.env`) | where | installed by |
+|-----------|------------------------------|-------|--------------|
+| EPEL + CodeReady Builder repos | OL9 `oracle-epel-release-el9` | dnf repos | base |
+| git, curl, wget, jq, unzip, tar, gzip, gcc, gcc-c++, make, cmake, ripgrep, fd-find, fzf, openssl, python3, ncurses | distro packages | `/usr/bin` | base |
+| Neovim | `NEOVIM_VERSION` (SHA-256 pinned) | `/opt/nvim-<ver>`, `/usr/local/bin/nvim` | neovim |
+| tree-sitter CLI | `TREE_SITTER_VERSION` (SHA-256 pinned; built with `RUST_TOOLCHAIN` on EL9) | `/usr/local/bin/tree-sitter` (+ `~/.rustup`, `~/.cargo`) | tree_sitter |
+| LazyGit | COPR package, or `LAZYGIT_VERSION` (checksums.txt) | `/usr/bin/lazygit` or `/usr/local/bin/lazygit` | lazygit |
+| Go | `GO_VERSION` (.sha256 verified) | `/usr/local/go` | golang |
+| gopls, goimports, staticcheck | `@latest` at install time, rebuilt on Go bumps | `~/go/bin` | golang |
+| nvm, Node.js LTS, npm | `NVM_VERSION`, `NODE_VERSION` | `~/.nvm` | node |
+| pnpm (Corepack) | `PNPM_VERSION` | nvm's bin | node |
+| TypeScript, @vtsls/language-server, vscode-langservers-extracted (eslint/html/css/json servers) | `TYPESCRIPT_VERSION`, `VTSLS_VERSION`, `VSCODE_LANGSERVERS_VERSION` | nvm global | node |
+| Herdr | `HERDR_VERSION` (SHA-256 pinned) | `~/.local/bin/herdr` | herdr |
+| OpenCode + Herdr integration plugin | `OPENCODE_VERSION` (SHA-256 pinned) | `~/.opencode/bin/opencode`, `~/.config/opencode/` | opencode |
+| Shell fragment, Herdr config, Neovim config, `bin/*` | repo files, symlinked | `~/.config/{dev-shell,herdr,nvim}`, `~/.local/bin` | dotfiles |
+| Neovim plugins (lazy.nvim lockfile), treesitter parsers, blink.cmp matcher | `dotfiles/nvim/lazy-lock.json` | `~/.local/share/nvim` | first `nvim`/verify |
+| Fixture repo + 5 worktrees (+ `pnpm install`: Vite, React, oxfmt, ESLint…) | fixture `package.json`/`pnpm-lock.yaml` | `~/src/fixture-monorepo`, `~/worktrees/1..5` | worktrees |
+| Herdr server + workspaces ws1..ws5 | – | runtime | workspaces |
+
+Not installed: Keycloak and Postgres (their dev panes are shells with the
+right ports), Mason, mise, Prettier, tmux.
 
 ## Idempotency
 

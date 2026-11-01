@@ -38,19 +38,33 @@
         src: "/tmp/{{ go_tarball }}"
         dest: /usr/local
         remote_src: true
+      register: go_extract
     - name: Remove tarball
       ansible.builtin.file:
         path: "/tmp/{{ go_tarball }}"
         state: absent
 
-- name: Go tools (gopls, goimports, staticcheck)
-  ansible.builtin.command: /usr/local/go/bin/go install {{ item.pkg }}
-  args:
-    creates: "{{ home }}/go/bin/{{ item.bin }}"
-  environment:
-    GOTOOLCHAIN: local
-    PATH: "{{ user_path }}"
+# Like install/golang.sh, the tools are (re)built whenever the toolchain changed,
+# so gopls/staticcheck never lag behind a GO_VERSION bump; otherwise only when missing.
+- name: Go tool binaries
+  ansible.builtin.stat:
+    path: "{{ home }}/go/bin/{{ item.bin }}"
   loop:
     - { pkg: golang.org/x/tools/gopls@latest, bin: gopls }
     - { pkg: golang.org/x/tools/cmd/goimports@latest, bin: goimports }
     - { pkg: honnef.co/go/tools/cmd/staticcheck@latest, bin: staticcheck }
+  loop_control:
+    label: "{{ item.bin }}"
+  register: go_tool_bins
+  check_mode: false
+
+- name: Go tools (gopls, goimports, staticcheck)
+  ansible.builtin.command: /usr/local/go/bin/go install {{ item.item.pkg }}
+  environment:
+    GOTOOLCHAIN: local
+    PATH: "{{ user_path }}"
+  loop: "{{ go_tool_bins.results }}"
+  loop_control:
+    label: "{{ item.item.bin }}"
+  when: (go_extract is defined and go_extract is changed) or not item.stat.exists
+  changed_when: true

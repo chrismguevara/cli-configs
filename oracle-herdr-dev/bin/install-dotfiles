@@ -24,8 +24,10 @@ link() { # link SRC DEST
     return
   fi
   if [[ -e "${dest}" && ! -L "${dest}" ]]; then
-    mv "${dest}" "${dest}.pre-dev-shell"
-    echo "    backed up existing ${dest} -> ${dest}.pre-dev-shell"
+    local bak="${dest}.pre-dev-shell"
+    [[ -e "${bak}" ]] && bak="${bak}.$(date +%s)"   # never overwrite an older backup
+    mv "${dest}" "${bak}"
+    echo "    backed up existing ${dest} -> ${bak}"
   fi
   ln -sfn "${src}" "${dest}"
   ok "${dest} -> ${src}"

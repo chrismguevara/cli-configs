@@ -3,7 +3,7 @@
   ansible.builtin.command: "{{ repo_dir }}/bin/verify-environment"
   register: verify
   changed_when: false
-  failed_when: verify.rc != 0
+  failed_when: false
   environment:
     PATH: "{{ user_path }}"
     LANG: C.UTF-8
@@ -14,3 +14,8 @@
   ansible.builtin.debug:
     msg: "{{ (verify.stdout_lines | default([]))[-1:] + (verify.stdout_lines | default([]) | select('search', 'FAIL') | list) }}"
   when: run_verify
+
+- name: Verification must pass
+  ansible.builtin.fail:
+    msg: "verify-environment reported failures (see the summary above); run it on the VM for details"
+  when: run_verify and (verify.rc | default(0)) != 0
