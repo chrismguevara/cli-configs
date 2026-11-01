@@ -164,14 +164,18 @@ sshd, following the README procedure exactly:
   documented, `setup-workspaces` relaunched the tools into the restored tabs.
 
 Ansible route (`ansible/site.yml`), same container image, new container, over
-SSH from a control node with ansible-core 2.19: first run installed everything
-and ended with `verify-environment` reporting 43 ok / 0 failed (after two
-fixes it surfaced: pnpm lookup outside interactive shells and a `TERM` for
-headless checkhealth); further runs changed nothing except where the
-repository checkout had new commits. The same playbook also ran on the VM
-image itself with Oracle Linux's AppStream ansible-core 2.14.18
-(`-i inventory/localhost.yml`), exit 0. `ansible-lint` passes at the
-production profile.
+SSH from a control node with ansible-core 2.19: a fresh run installs
+everything in about 5 minutes and ends with `verify-environment` reporting
+43 ok / 0 failed. Re-runs report `changed=0` (one re-run relaunched a tool into
+a pane that had dropped back to a shell, which is the designed behaviour), the
+`--check --diff` dry run exits 0, and the same playbook runs on the VM image
+itself with Oracle Linux's AppStream ansible-core 2.14.18
+(`-i inventory/localhost.yml`, exit 0, changed=0 when converged).
+`ansible-lint` passes at the production profile. An adversarial review of the
+roles against the shell scripts produced nine fixes, all applied (among them:
+Go tools are rebuilt when `GO_VERSION` changes, the nvm "already installed"
+check in `install/node.sh` now compares `nvm --version`, probes are
+check-mode safe, backups never overwrite an older backup).
 
 Sandbox differences from a real VM (each only affected *how* a step was
 tested, not the scripts): `go.dev` and `dl.google.com` were blocked, so
