@@ -20,8 +20,12 @@ section() { printf '\n\033[1;34m== %s ==\033[0m\n' "$*"; }
 # check_version LABEL EXPECTED CMD...  (EXPECTED may be empty: only require it to run)
 check_version() {
   local label="$1" expected="$2"; shift 2
-  local out
-  if ! out="$("$@" 2>&1 | head -n1)"; then fail "${label}: '$*' failed: ${out}"; return; fi
+  local out rc
+  # Capture everything, then keep the first line: piping into head would make
+  # pipefail report a spurious failure when the tool is still writing (SIGPIPE).
+  out="$("$@" 2>&1)"; rc=$?
+  out="${out%%$'\n'*}"
+  if [[ ${rc} -ne 0 ]]; then fail "${label}: '$*' failed (rc=${rc}): ${out}"; return; fi
   if [[ -n "${expected}" && "${out}" != *"${expected}"* ]]; then
     fail "${label}: got '${out}', expected '${expected}' (versions.env)"
   else
