@@ -62,6 +62,17 @@
   loop_control:
     label: "{{ item.path | basename }}"
 
+# Plugins + tree-sitter parsers once, headless, before any Neovim pane starts:
+# concurrent first starts would race while compiling parsers (see bin/nvim-bootstrap).
+- name: Neovim bootstrap (lazy.nvim restore + tree-sitter parsers)
+  ansible.builtin.command: "{{ repo_dir }}/bin/nvim-bootstrap"
+  register: nvim_bootstrap
+  changed_when: "'Installing parser' in nvim_bootstrap.stdout or 'Installed' in nvim_bootstrap.stdout"
+  environment:
+    PATH: "{{ user_path }}"
+    TERM: xterm-256color
+    LANG: C.UTF-8
+
 # Same line bin/install-dotfiles adds; either tool recognises the other's.
 - name: ~/.bashrc sources the fragment
   ansible.builtin.lineinfile:

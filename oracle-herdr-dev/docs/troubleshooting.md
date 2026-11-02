@@ -77,9 +77,14 @@
 - **`conform: no node_modules/.bin/oxfmt above …`**: the project has no
   project-local oxfmt (`pnpm add -D oxfmt`). This is intentional; there is no
   global fallback.
-- **Parsers missing / highlighting off**: `:TSInstall <lang>` or
-  `:lua require('nvim-treesitter').install({...})`; needs `tree-sitter --version`
-  ≥ 0.26.1 and a C compiler. `:checkhealth nvim-treesitter`.
+- **Parsers missing / highlighting off**: run `nvim-bootstrap` (needs
+  `tree-sitter --version` ≥ 0.26.1 and a C compiler), or `:TSInstall <lang>`.
+  `:checkhealth nvim-treesitter`.
+- **`:checkhealth nvim-treesitter` lists query errors** (`css(highlights): …scm`)
+  after several Neovim instances started together on a new machine: the
+  parallel first starts raced while compiling parsers. Quit them, remove
+  `~/.local/share/nvim/site/{parser,parser-info,queries}`, run
+  `nvim-bootstrap`, then `setup-workspaces` again.
 - **blink.cmp warns about the fuzzy library**: the prebuilt
   `libblink_cmp_fuzzy.so` could not be downloaded/loaded; it falls back to Lua.
   `:checkhealth blink.cmp`; with Rust installed `cargo build --release` in

@@ -64,10 +64,10 @@ check_version goimports ""                            sh -c 'goimports -h 2>&1 |
 check_version staticcheck ""                          staticcheck -version
 
 section "neovim (headless)"
-if nvim --headless "+Lazy! restore" +qa >/dev/null 2>&1; then
-  ok "lazy.nvim restore (plugins installed at lazy-lock.json versions)"
+if "${REPO_ROOT}/bin/nvim-bootstrap" >/dev/null 2>&1; then
+  ok "nvim-bootstrap (lazy.nvim restore + tree-sitter parsers)"
 else
-  fail "lazy.nvim restore failed (run: nvim --headless '+Lazy! restore' +qa)"
+  fail "bin/nvim-bootstrap failed (run it by hand to see why)"
 fi
 health="$(mktemp)"
 nvim --headless "+checkhealth" "+silent! write! ${health}" +qa >/dev/null 2>&1

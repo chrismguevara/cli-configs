@@ -137,4 +137,7 @@ The prompt shows `[ws3]` when a workspace environment is active.
   resolver that only accepts `node_modules/.bin/oxfmt` found upward from the
   file; no PATH fallback, and `lsp_format = "never"` so formatting never
   silently degrades to the language server.
+- **Parsers are compiled once, up front** (`bin/nvim-bootstrap`), never at
+  Neovim startup: concurrent first starts of five panes would otherwise compile
+  the same parsers into the same directory and corrupt each other.
 - **No Mason, no mise, no Prettier, no tmux.**

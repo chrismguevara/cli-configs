@@ -56,3 +56,12 @@ for f in "${REPO_ROOT}"/bin/*; do
   [[ -x "${f}" ]] || continue
   link "${f}" "${HOME}/.local/bin/$(basename "${f}")"
 done
+
+# Plugins + tree-sitter parsers, once, before any interactive nvim or Herdr pane
+# starts (parallel first starts would race while compiling parsers).
+if command -v nvim >/dev/null && command -v tree-sitter >/dev/null; then
+  log "neovim bootstrap"
+  "${REPO_ROOT}/bin/nvim-bootstrap"
+else
+  echo "    note: nvim/tree-sitter not installed yet; run bin/nvim-bootstrap after install/all.sh" >&2
+fi

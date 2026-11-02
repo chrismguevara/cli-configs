@@ -1,5 +1,9 @@
 -- Official nvim-treesitter, main branch (Neovim >= 0.12, tree-sitter CLI >= 0.26.1).
--- Parsers are compiled locally with the C compiler + tree-sitter CLI from install/.
+-- Parsers are compiled locally with the C compiler + tree-sitter CLI from install/,
+-- by bin/nvim-bootstrap (run from bin/install-dotfiles), which reads this list.
+-- Nothing is installed at startup on purpose: five panes starting at once would
+-- race while compiling into the same directory. Add a language here, then run
+-- `nvim-bootstrap` (or :TSInstall <lang>).
 local languages = {
   -- TypeScript / web
   "typescript", "tsx", "javascript", "jsdoc", "json", "css", "html",
@@ -19,9 +23,6 @@ return {
     require("nvim-treesitter").setup({
       install_dir = vim.fn.stdpath("data") .. "/site",
     })
-    -- Async; a no-op when everything is installed. bin/verify-environment waits on it.
-    require("nvim-treesitter").install(languages)
-
     vim.api.nvim_create_autocmd("FileType", {
       group = vim.api.nvim_create_augroup("dev-treesitter", { clear = true }),
       callback = function(ev)

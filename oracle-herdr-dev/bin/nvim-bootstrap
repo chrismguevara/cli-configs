@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# One-time (idempotent) headless Neovim bootstrap: install the plugins pinned in
+# dotfiles/nvim/lazy-lock.json and compile the tree-sitter parsers.
+#
+# Run this before the first interactive `nvim` and before bin/setup-workspaces.
+# Several Neovim instances starting at once on a fresh machine would all try to
+# compile the same parsers into the same directory and corrupt each other's
+# output; doing it once here, up front, avoids that. Re-running is cheap.
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+export PATH="${HOME}/.local/bin:/usr/local/go/bin:${HOME}/go/bin:${PATH}"
+export TERM="${TERM:-xterm-256color}"
+export LANG="${LANG:-C.UTF-8}"
+
+log() { printf '\033[1;34m==> %s\033[0m\n' "$*"; }
+
+command -v nvim >/dev/null || { echo "nvim not found (run install/neovim.sh)" >&2; exit 1; }
+command -v tree-sitter >/dev/null || { echo "tree-sitter not found (run install/tree-sitter.sh)" >&2; exit 1; }
+[[ -e "${HOME}/.config/nvim/init.lua" ]] || { echo "${HOME}/.config/nvim is not installed (run bin/install-dotfiles)" >&2; exit 1; }
+
+log "lazy.nvim: install plugins at the versions in lazy-lock.json"
+nvim --headless "+Lazy! restore" +qa
+
+log "nvim-treesitter: compile parsers (first run takes a few minutes)"
+# The language list lives in dotfiles/nvim/lua/plugins/treesitter.lua; it is read
+# back here so the two never drift.
+langs="$(sed -n '/^local languages = {/,/^}/p' "${REPO_ROOT}/dotfiles/nvim/lua/plugins/treesitter.lua" \
+  | grep -oE '"[a-z_]+"' | tr '\n' ',' | sed 's/,$//')"
+nvim --headless -c "lua require('nvim-treesitter').install({${langs}}):wait(900000)" +qa 2>&1 \
+  | grep -vE 'Language installed|Installing parser|already installed' || true
+
+installed="$(nvim --headless -c "lua io.stdout:write(#require('nvim-treesitter').get_installed('parsers'))" +qa 2>/dev/null | tail -c 4)"
+log "parsers installed: ${installed:-?}"

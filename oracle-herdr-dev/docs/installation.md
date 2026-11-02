@@ -124,10 +124,14 @@ marked `source` line is appended to `~/.bashrc`), `dotfiles/herdr/config.toml
 executable in `bin/` into `~/.local/bin`. Existing non-symlink files are backed
 up once as `*.pre-dev-shell`.
 
-The first interactive `nvim` (or `verify-environment`) bootstraps lazy.nvim,
-installs the plugins pinned in `dotfiles/nvim/lazy-lock.json`, downloads
-blink.cmp's prebuilt fuzzy matcher, builds telescope-fzf-native with `make`,
-and compiles the tree-sitter parsers with the C compiler + tree-sitter CLI.
+`bin/install-dotfiles` finishes by running `bin/nvim-bootstrap`, which installs
+the plugins pinned in `dotfiles/nvim/lazy-lock.json` (downloading blink.cmp's
+prebuilt fuzzy matcher and building telescope-fzf-native with `make`) and
+compiles the tree-sitter parsers with the C compiler + tree-sitter CLI, headless
+and once. Doing it before any Neovim pane exists matters: several first starts
+at the same time would compile the same parsers into the same directory and
+corrupt each other. Re-run `nvim-bootstrap` after adding a language to
+`dotfiles/nvim/lua/plugins/treesitter.lua`.
 
 ## 5. Worktrees and workspaces
 
