@@ -12,3 +12,8 @@
     SHELL: /bin/bash
     LANG: C.UTF-8
   when: run_workspaces
+
+- name: Workspace bootstrap output
+  ansible.builtin.debug:
+    msg: "{{ workspaces.stderr_lines | default([]) | reject('search', 'already|exists|present') | list }}"
+  when: run_workspaces and workspaces is changed
