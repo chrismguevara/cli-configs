@@ -177,6 +177,19 @@ Go tools are rebuilt when `GO_VERSION` changes, the nvm "already installed"
 check in `install/node.sh` now compares `nvm --version`, probes are
 check-mode safe, backups never overwrite an older backup).
 
+OpenCode 2 switch (2026-11-02): a fresh playbook run with `OPENCODE_VERSION=v2.2.5`
+(verified against the release's `SHA256SUMS`) and `HERDR_VERSION=v0.9.5` ended
+with 43 ok / 0 failed; `herdr integration status` reports the OpenCode
+integration as current (v13) and all five OpenCode 2 panes register as Herdr
+agents in state `idle` with `interactive_ready`. The shell route
+(`install/herdr.sh`, `install/opencode.sh`) was exercised separately on the same
+target. Recreating all five workspaces from scratch twice produced five
+registered agents each time. One real defect surfaced and was fixed along the
+way: concurrent first starts of the Neovim panes raced while compiling
+tree-sitter parsers into the same directory, leaving parsers missing; parsers
+are now compiled once by `bin/nvim-bootstrap` (run from `bin/install-dotfiles`
+and the Ansible `dotfiles` role) and never at Neovim startup.
+
 Sandbox differences from a real VM (each only affected *how* a step was
 tested, not the scripts): `go.dev` and `dl.google.com` were blocked, so
 `install/golang.sh` was run against a local mirror of the official
