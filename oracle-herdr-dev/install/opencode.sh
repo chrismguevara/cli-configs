@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# OpenCode from the official GitHub release (pinned, checksum-verified).
+# OpenCode 2 from the official GitHub release (pinned, verified against the
+# release's SHA256SUMS).
 #
-# The official installer (`curl -fsSL https://opencode.ai/install | bash`)
+# The official installer (`curl -fsSL https://opencode.ai/v2/install | bash`)
 # downloads the same release tarball and puts the binary in ~/.opencode/bin.
 # This script does the same for the exact version in versions.env, without
 # editing ~/.bashrc (dotfiles/bashrc adds ~/.opencode/bin to PATH).
@@ -20,14 +21,17 @@ base="https://github.com/anomalyco/opencode/releases/download/${OPENCODE_VERSION
 install_dir="${OPENCODE_INSTALL_DIR:-$HOME/.opencode/bin}"
 want="${OPENCODE_VERSION#v}"
 
+# `opencode --version` prints "opencode v2.2.5" (v1 printed a bare number).
+installed_version() { "$1" --version 2>/dev/null | head -1 | sed -E 's/^opencode[[:space:]]+v?//'; }
+
 log "opencode ${OPENCODE_VERSION} (${flavor})"
-if [[ "$("${install_dir}/opencode" --version 2>/dev/null)" == "${want}" ]]; then
+if [[ "$(installed_version "${install_dir}/opencode")" == "${want}" ]]; then
   ok "already installed in ${install_dir}"
 else
   tmp="$(mktmp)"
   fetch "${base}/${asset}" "${tmp}/${asset}"
-  expected_var="OPENCODE_SHA256_${flavor//-/_}"
-  sha256_check "${tmp}/${asset}" "${!expected_var:-}"
+  fetch "${base}/SHA256SUMS" "${tmp}/SHA256SUMS"
+  sha256_check "${tmp}/${asset}" "$(awk -v a="${asset}" '$2 == a {print $1}' "${tmp}/SHA256SUMS")"
   mkdir -p "${install_dir}"
   tar -C "${tmp}" -xzf "${tmp}/${asset}"
   install -m 0755 "${tmp}/opencode" "${install_dir}/opencode"
@@ -35,8 +39,8 @@ fi
 
 export PATH="${install_dir}:${PATH}"
 export OPENCODE_DISABLE_AUTOUPDATE=1
-[[ "$(opencode --version)" == "${want}" ]] || die "opencode on PATH is not ${want}"
-ok "opencode $(opencode --version)"
+[[ "$(installed_version "$(command -v opencode)")" == "${want}" ]] || die "opencode on PATH is not ${want}"
+ok "$(opencode --version)"
 
 # Herdr's official OpenCode integration: lifecycle/state + session id reporting
 # so Herdr can resume the pane with `opencode --session <id>` after a restart.

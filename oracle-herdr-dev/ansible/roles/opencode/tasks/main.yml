@@ -1,6 +1,7 @@
 ---
-# Mirrors install/opencode.sh: pinned release tarball -> ~/.opencode/bin/opencode
-# (the official installer's directory), then Herdr's OpenCode integration.
+# Mirrors install/opencode.sh: pinned OpenCode 2 release tarball (verified against
+# the release's SHA256SUMS) -> ~/.opencode/bin/opencode (the official installer's
+# directory), then Herdr's OpenCode integration.
 # Never touches ~/.config/opencode/opencode.json or ~/.local/share/opencode/auth.json.
 - name: CPU flags (x86_64 builds assume AVX2)
   check_mode: false
@@ -17,7 +18,7 @@
 - name: OpenCode asset
   ansible.builtin.set_fact:
     oc_asset: "opencode-linux-{{ oc_flavor }}.tar.gz"
-    oc_sha256: "{{ versions['OPENCODE_SHA256_' ~ (oc_flavor | replace('-', '_'))] }}"
+    oc_base: "https://github.com/anomalyco/opencode/releases/download/v{{ versions.OPENCODE_VERSION | regex_replace('^v', '') }}"
 
 - name: Installed OpenCode version
   check_mode: false
@@ -26,14 +27,20 @@
   changed_when: false
   failed_when: false
 
+# `opencode --version` prints "opencode v2.2.5" (v1 printed a bare number).
 - name: Install OpenCode {{ oc_version }}
-  when: oc_installed.rc != 0 or oc_installed.stdout.strip() != oc_version
+  when: oc_installed.rc != 0 or (oc_installed.stdout_lines[0] | default('') | regex_replace('^opencode\s+v?', '')) != oc_version
   block:
+    - name: Fetch SHA256SUMS
+      ansible.builtin.uri:
+        url: "{{ oc_base }}/SHA256SUMS"
+        return_content: true
+      register: oc_sums
     - name: Download {{ oc_asset }}
       ansible.builtin.get_url:
-        url: "https://github.com/anomalyco/opencode/releases/download/v{{ oc_version }}/{{ oc_asset }}"
+        url: "{{ oc_base }}/{{ oc_asset }}"
         dest: "/tmp/{{ oc_asset }}"
-        checksum: "sha256:{{ oc_sha256 }}"
+        checksum: "sha256:{{ (oc_sums.content | regex_search('([0-9a-f]{64})\\s+' ~ oc_asset, '\\1'))[0] }}"
         mode: "0644"
     - name: ~/.opencode/bin exists
       ansible.builtin.file:

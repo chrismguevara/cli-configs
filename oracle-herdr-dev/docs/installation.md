@@ -93,7 +93,7 @@ or where a pin is recorded, and never edits `~/.bashrc` (that is
 | `install/golang.sh`      | Go from go.dev (`.sha256` verified) → `/usr/local/go`; `go install` gopls, goimports, staticcheck → `~/go/bin` |
 | `install/node.sh`        | nvm (pinned tag, `PROFILE=/dev/null`) → Node LTS → Corepack pnpm; global `typescript@6`, `@vtsls/language-server`, `vscode-langservers-extracted` |
 | `install/herdr.sh`       | Herdr release binary → `~/.local/bin/herdr` (SHA-256 from Herdr's manifest)                |
-| `install/opencode.sh`    | OpenCode release tarball → `~/.opencode/bin/opencode` (pinned SHA-256, AVX2/baseline aware); then `herdr integration install opencode` |
+| `install/opencode.sh`    | OpenCode 2 release tarball → `~/.opencode/bin/opencode` (verified against the release `SHA256SUMS`, AVX2/baseline aware); then `herdr integration install opencode` |
 
 Language servers live at the OS/user level on purpose (no Mason):
 `vtsls`, `vscode-eslint-language-server`, `vscode-html-language-server`,
@@ -185,7 +185,9 @@ of the workflow (`[update] version_check = false` in Herdr,
 - **Go**: set `GO_VERSION`, run `install/golang.sh` (re-installs gopls/goimports/staticcheck).
 - **Node**: set `NODE_VERSION` (and `PNPM_VERSION`, `NVM_VERSION`), run
   `install/node.sh`; `nvm alias default` moves to the new version.
-- **OpenCode**: set `OPENCODE_VERSION` + `OPENCODE_SHA256_*`, run `install/opencode.sh`.
+- **OpenCode**: set `OPENCODE_VERSION` (a `v2.x.y` tag; the checksum comes from
+  that release's `SHA256SUMS`), run `install/opencode.sh`, then restart the
+  OpenCode panes (`setup-workspaces` after quitting them, or a Herdr server restart).
 - **OS packages**: `sudo dnf upgrade`.
 
 After any upgrade: `verify-environment`.

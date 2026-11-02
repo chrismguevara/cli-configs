@@ -24,7 +24,7 @@ ansible/
     ├── golang       go.dev tarball (.sha256 verified) -> /usr/local/go; gopls, goimports, staticcheck
     ├── node         install/node.sh (nvm, Node LTS, Corepack pnpm, vtsls + langservers)
     ├── herdr        pinned static binary -> ~/.local/bin/herdr (SHA-256 from Herdr's manifest)
-    ├── opencode     pinned tarball -> ~/.opencode/bin; herdr integration install opencode
+    ├── opencode     pinned OpenCode 2 tarball (SHA256SUMS verified) -> ~/.opencode/bin; herdr integration install opencode
     ├── dotfiles     symlinks + ~/.bashrc block (same layout as bin/install-dotfiles)
     ├── worktrees    bin/setup-worktrees
     ├── workspaces   bin/setup-workspaces
@@ -130,7 +130,7 @@ role's tag.
 | pnpm (Corepack) | `PNPM_VERSION` | nvm's bin | node |
 | TypeScript, @vtsls/language-server, vscode-langservers-extracted (eslint/html/css/json servers) | `TYPESCRIPT_VERSION`, `VTSLS_VERSION`, `VSCODE_LANGSERVERS_VERSION` | nvm global | node |
 | Herdr | `HERDR_VERSION` (SHA-256 pinned) | `~/.local/bin/herdr` | herdr |
-| OpenCode + Herdr integration plugin | `OPENCODE_VERSION` (SHA-256 pinned) | `~/.opencode/bin/opencode`, `~/.config/opencode/` | opencode |
+| OpenCode 2 + Herdr integration plugin | `OPENCODE_VERSION` (verified against the release's `SHA256SUMS`) | `~/.opencode/bin/opencode`, `~/.config/opencode/` | opencode |
 | Shell fragment, Herdr config, Neovim config, `bin/*` | repo files, symlinked | `~/.config/{dev-shell,herdr,nvim}`, `~/.local/bin` | dotfiles |
 | Neovim plugins (lazy.nvim lockfile), treesitter parsers, blink.cmp matcher | `dotfiles/nvim/lazy-lock.json` | `~/.local/share/nvim` | first `nvim`/verify |
 | Fixture repo + 5 worktrees (+ `pnpm install`: Vite, React, oxfmt, ESLint…) | fixture `package.json`/`pnpm-lock.yaml` | `~/src/fixture-monorepo`, `~/worktrees/1..5` | worktrees |

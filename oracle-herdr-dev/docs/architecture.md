@@ -125,8 +125,10 @@ The prompt shows `[ws3]` when a workspace environment is active.
 - **Herdr installed from the pinned GitHub release** into the same place the
   official installer uses (`~/.local/bin/herdr`), verified against the SHA-256
   from Herdr's own release manifest. `[update] version_check = false`.
-- **OpenCode installed from the pinned release** into `~/.opencode/bin` (the
-  official installer's directory) with pinned SHA-256s; `OPENCODE_DISABLE_AUTOUPDATE=1`.
+- **OpenCode 2 installed from the pinned release** into `~/.opencode/bin` (the
+  official installer's directory), verified against the release's `SHA256SUMS`;
+  `OPENCODE_DISABLE_AUTOUPDATE=1`. GitHub's "latest" badge still points at the
+  v1 line, which is why the tag is pinned rather than resolved.
 - **LazyGit via DNF when possible**: the README-recommended COPR `dejan/lazygit`
   with the explicit `epel-9-<arch>` chroot, so `dnf upgrade` manages it. If the
   COPR is unreachable or has no EL9 build, the script falls back to the pinned

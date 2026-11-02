@@ -59,6 +59,11 @@
   `herdr server reload-config`.
 - **Agent state stays "unknown" for OpenCode**: `herdr integration status`
   must say `opencode: current`; restart the OpenCode TUI after installing.
+- **Upgrading a machine that still has OpenCode v1 settings**: OpenCode 2
+  imports v1 TUI preferences (`tui.json`, `kv.json`) on its first start, and
+  Herdr defers its plugin registration until that has happened. Start
+  `opencode` once by hand, then run `herdr integration install opencode`
+  again (or `install/opencode.sh`, which does it).
 
 ## Neovim
 

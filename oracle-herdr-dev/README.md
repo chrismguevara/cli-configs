@@ -119,7 +119,7 @@ Nothing updates itself. Change the pin in `versions.env`, re-run the matching
 | Neovim          | `NEOVIM_VERSION` + `NEOVIM_SHA256_*`              | `install/neovim.sh`    |
 | tree-sitter CLI | `TREE_SITTER_VERSION` (+ `RUST_TOOLCHAIN`)        | `install/tree-sitter.sh` |
 | Herdr           | `HERDR_VERSION` + `HERDR_SHA256_*`                | `install/herdr.sh`     |
-| OpenCode        | `OPENCODE_VERSION` + `OPENCODE_SHA256_*`          | `install/opencode.sh`  |
+| OpenCode        | `OPENCODE_VERSION` (verified against the release's `SHA256SUMS`) | `install/opencode.sh` |
 | Go              | `GO_VERSION` (checksum fetched from go.dev)       | `install/golang.sh`    |
 | Node / pnpm     | `NODE_VERSION`, `PNPM_VERSION`, `NVM_VERSION`     | `install/node.sh`      |
 | LazyGit         | `sudo dnf upgrade lazygit` (COPR) or `LAZYGIT_VERSION` fallback | `install/lazygit.sh` |
@@ -130,8 +130,8 @@ Nothing updates itself. Change the pin in `versions.env`, re-run the matching
 
 See `versions.env` for the exact pins and checksums. Summary of what
 `verify-environment` reported on the Oracle Linux 9.8 test system (x86_64):
-Neovim v0.12.5, tree-sitter 0.27.0, Herdr 0.9.1 (OpenCode integration v12),
-OpenCode 1.18.32, LazyGit 0.65.1, Go 1.27.1 (gopls v0.23.0, staticcheck 2026.2.1),
+Neovim v0.12.5, tree-sitter 0.27.0, Herdr 0.9.5 (OpenCode integration),
+OpenCode 2.2.5 (the OpenCode 2 line), LazyGit 0.65.1, Go 1.27.1 (gopls v0.23.0, staticcheck 2026.2.1),
 Node v24.21.0 (npm 11.19.0, pnpm 12.6.0, TypeScript 6.0.3, vtsls 0.3.0,
 vscode-langservers-extracted 4.10.0), oxfmt 0.70.0, git 2.52.0, ripgrep 15.2.0,
 fd 10.4.2, fzf 0.58.0.
